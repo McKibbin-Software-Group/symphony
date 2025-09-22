@@ -1,0 +1,14 @@
+//  gggs2r.sym
+//  July  2022
+//
+//  G-Cubed 2r sets
+//
+
+set time (t0) 'time';
+set regions (USA) 'United States' ;
+set sectors (a1) 'Sector 1' ;
+set goods (g1) 'Good 1' ;
+
+variable CON(regions) 'consumption' end,gdp ;
+
+CON = 1 ;

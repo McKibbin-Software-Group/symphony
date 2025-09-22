@@ -1,0 +1,13 @@
+// Minimal example with an exogenous variable.
+
+set time (t0) 'time';
+set regions (USA) 'United States' ;
+set sectors (a1) 'Sector 1' ;
+set goods (g1) 'Good 1' ;
+
+variable v1(regions) 'consumption' exo,gdp ;
+
+variable v2(regions) 'consumption' end,gdp ;
+
+
+v2 = v1

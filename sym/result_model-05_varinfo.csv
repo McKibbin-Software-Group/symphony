@@ -1,0 +1,2 @@
+"EXCH(regions)",1,end,idx,"nominal exchange rate","end,idx"
+"EXCL(regions)",1,sta,idx,"nominal exchange rate - lagged","idx,sta"

@@ -1,0 +1,92 @@
+Run Specifications:
+   Sym build 964 (2020/07/06)
+   Target language: python
+   Source file: model-05.sym
+
+Intertemporal Details:
+
+   Longest lag is 0; longest lead is 1.
+
+Sets:
+
+   goods
+      Base set: self
+      Good 1 
+         g1
+
+   regions
+      Base set: self
+      United States 
+         USA
+
+   sectors
+      Base set: self
+      Sector 1 
+         a1
+
+   time
+      Base set: self
+      time 
+         t0
+
+
+Parameters:
+
+
+Variables:
+
+   EXCH
+      nominal exchange rate (end,idx)
+         regions
+
+   EXCL
+      nominal exchange rate - lagged (idx,sta)
+         regions
+
+
+Unique Elements:
+
+   a1,g1,t0,USA
+
+Equations Using Each Parameter:
+
+
+Equations Using Each Variable:
+
+   EXCH:
+      LHS 1
+      RHS 2
+   EXCL:
+      LHS 2
+      RHS none
+
+
+Equation 1
+----------
+Domain: regions
+Count: 1 (1 to 1)
+
+   EXCH=0
+
+
+Equation 2
+----------
+Relative Time: [0,1]
+Domain: regions
+Count: 1 (2 to 2)
+
+   lead(EXCL)=EXCH
+
+
+Length of MSGPROC Vectors:
+
+   z1l has 1 elements
+   zel has 0 elements
+   j1l has 0 elements
+   x1l has 1 elements
+   exo has 0 elements
+   par has 0 elements
+
+Equation Count: 2
+Endogenous Variables, Used:   2
+Endogenous Variables, Total:  2
