@@ -4,11 +4,7 @@ No changes
 
 # Grammar features
 
-Added detail to variable and parameter declarations.
-
-Added `dimension` calculations:
-- addition (union)
-- subtraction (exclusion)
+Added `dimension` calculations
 
 ## Examples
 

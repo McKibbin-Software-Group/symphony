@@ -11,8 +11,7 @@ category regions: "All regions of the World"
 [
     USA,
     AUS,
-    ROW,
-    purple
+    ROW
 ]
 
 category colours: "All colours" [red, green, blue]

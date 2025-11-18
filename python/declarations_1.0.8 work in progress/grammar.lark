@@ -19,13 +19,13 @@ TRIPLE_STRING: /\"\"\"(.|\n|\r)*?\"\"\"/
 
 start: declaration+
 
-declaration: member_decl
+declaration: member_decl                -> other_decl
            | category_decl
            | dimension_decl
-           | dimensions_decl
-           | parameter_decl
-           | variable_decl
-           | equation_decl
+           | dimensions_decl            -> other_decl
+           | parameter_decl             -> other_decl
+           | variable_decl              -> other_decl
+           | equation_decl              -> other_decl
 
 member_decl:     "member"    NAME ":" label doc?
 category_decl:   "category"  NAME ":" label member_list? doc?
@@ -34,15 +34,15 @@ dimension_decl:  "dimension" NAME ":" label dimension_expression? doc?
 // If these are placeholders for future constructs, keep them distinct:
 dimensions_decl: "dimensions" NAME ":" label doc?
 parameter_decl:  "parameter"  NAME ":" label units doc?
-variable_decl:   "variable"   NAME ":" label units deviation_units dimensions_decl dimension_constraints logged? intertemporal? doc?
+variable_decl:   "variable"   NAME ":" label units deviation_units dimensions_decl dimension_constraints logged? intertemporal_constant? doc?
 equation_decl:   "equation"   NAME ":" label equation_expression doc?
 
 units: "units" "=" NAME
 deviation_units: "deviation_units" "=" NAME
 
-logged: "logged" ["=" ("true"|"false")]
+logged: ["logged" ["=" ("true"|"false")] ]?
 
-intertemporal: "intertemporal" ["=" ("true"|"false")]
+intertemporal_constant: ["intertemporal" ["=" ("true"|"false")] ]?
 
 label: ESCAPED_STRING
 doc: TRIPLE_STRING

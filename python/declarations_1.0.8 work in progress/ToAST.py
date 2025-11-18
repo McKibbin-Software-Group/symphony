@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import argparse
 import json
 import pathlib
@@ -12,8 +11,6 @@ from typing import Any, List, Optional, Tuple, Union, Dict, Iterable
 from lark import Lark, Transformer, Token, Tree, v_args
 from lark.exceptions import UnexpectedCharacters, UnexpectedToken, UnexpectedInput
 
-# Configure logging to the console
-logging.basicConfig(level=logging.DEBUG)
 
 # ========= AST node definitions =========
 
@@ -220,6 +217,20 @@ class ToAST(Transformer):
                         doc_pair = it  # type: ignore[assignment]
         return doc_pair, list_term
 
+    def other_decl(self, meta: Any, items: list[Any]) -> DeclNode:
+        # TYPE_OTHER NAME ":" label (doc)?
+        type_token: Token = items[0]
+        name_token: Token = items[1]
+        label_text, label_pos = items[2]
+
+        # Everything after the label is optional; take the first (text, pos) tuple as doc if present
+        doc_pair: Optional[Tuple[str, SourcePosition]] = None
+        for it in items[3:]:
+            if isinstance(it, tuple) and len(it) == 2 and isinstance(it[0], str):
+                doc_pair = it  # type: ignore[assignment]
+                break
+        return self._build_other(type_token, name_token, label_text, label_pos, doc_pair)
+
     def category_decl(self, meta: Any, items: list[Any]) -> DeclNode:
         # "category" NAME ":" label (dim_list)? (doc)?
         type_tok = Token("TYPE", "category")
@@ -238,42 +249,6 @@ class ToAST(Transformer):
         # The rest (if any) can appear in any order; both are optional
         doc_pair, expr = self._pick_doc_and_expr(items[2:])
         return self._build_dimension(type_tok, name_tok, label_text, label_pos, expr, doc_pair)
-
-    def other_decl(self, type:str, meta: Any, items: list[Any]) -> DeclNode:
-        # 
-        type_token: Token = Token("TYPE", type)
-        name_token: Token = items[0]
-        label_text, label_pos = items[1]
-
-        # Everything after the label is optional; take the first (text, pos) tuple as doc if present
-        doc_pair: Optional[Tuple[str, SourcePosition]] = None
-        for it in items[2:]:
-            if isinstance(it, tuple) and len(it) == 2 and isinstance(it[0], str):
-                doc_pair = it  # type: ignore[assignment]
-                break
-        return self._build_other(type_token, name_token, label_text, label_pos, doc_pair)
-    
-    def member_decl(self, meta: Any, items: list[Any]) -> DeclNode:
-        # 
-        return self.other_decl("variable", meta, items)
-
-    def variable_decl(self, meta: Any, items: list[Any]) -> DeclNode:
-        # 
-        return self.other_decl("variable", meta, items)
-
-    def parameter_decl(self, meta: Any, items: list[Any]) -> DeclNode:
-        # 
-        return self.other_decl("parameter", meta, items)
-
-    def equation_decl(self, meta: Any, items: list[Any]) -> DeclNode:
-        # 
-        return self.other_decl("equation", meta, items)
-
-    def dimensions_decl(self, meta: Any, items: list[Any]) -> DeclNode:
-        # 
-        return self.other_decl("dimensions", meta, items)
-
-
 
     # ---- builders ----
 

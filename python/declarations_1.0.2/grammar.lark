@@ -4,7 +4,8 @@
 // one short label
 // an optional markdown documentation.
 
-start: declaration+                          // separators ignored globally
+
+start: declaration+                         // separators ignored globally
 
 // TYPE NAME ":" label [doc]
 declaration: TYPE NAME ":" label doc?         -> decl

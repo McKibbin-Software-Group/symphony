@@ -1,14 +1,14 @@
-# Custom SYM processor variable definitions
-SYM=sym
-FILE ?= set-1.sym
-FILENAME = model-${FILE}
-
 # Custom Lark Parser variable definitions
 GRAMMAR = grammar.lark
 MODEL = model.sym
 MODEL_PARSER = ToAST.py
-CASE = 1.0.0
+CASE = 1.0.7
 DECLARATIONS = declarations_${CASE}
+
+# Custom SYM processor variable definitions
+SYM=sym
+FILE ?= set-1.sym
+FILENAME = model-${FILE}
 
 # (default target) Run the chosen target by default
 default: run
@@ -16,7 +16,7 @@ default: run
 run:
 	@echo "Running use case ${CASE} ${MODEL} with ${MODEL_PARSER} ..." ; \
 	cd python/${DECLARATIONS}/ ; \
-	python ${MODEL_PARSER} --grammar ${GRAMMAR} ${MODEL}
+	python ${MODEL_PARSER} --grammar ${GRAMMAR} ${MODEL}; \
 	cd ../.. ; 
 
 

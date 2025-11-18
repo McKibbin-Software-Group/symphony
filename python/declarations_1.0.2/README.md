@@ -1,6 +1,6 @@
 # Grammar features
 
-General declarations of named entities that come with a label and optional description.
+Improved formatting including a `:` after the reserved word.
 
 ## Run example
 
