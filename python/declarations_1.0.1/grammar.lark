@@ -1,0 +1,30 @@
+// grammar.lark
+//
+// Grammar for declared names with types of names and where each name has:
+// one short label
+// an optional markdown documentation.
+
+
+start: declaration+                         // separators ignored globally
+
+// Reversed order: TYPE NAME ":" label doc?
+declaration: TYPE NAME label doc?       -> decl
+
+label: ESCAPED_STRING
+doc:   TRIPLE_STRING
+
+// Types (UPPERCASE keywords)
+TYPE: "value" | "dimension" | "dimensions" | "domain" | "parameter" | "variable" | "equation"
+
+// Make sure keywords don't lex as NAME:
+NAME: /(?!value|set|dimensions|parameter|variable|equation)[A-Za-z_]\w*/
+
+// Allow ; or newlines as separators anywhere
+SEP: /[;\r\n]+/
+%ignore SEP
+
+TRIPLE_STRING: /\"\"\"(.|\n)*?\"\"\"/
+
+%import common.ESCAPED_STRING
+%import common.WS_INLINE
+%ignore WS_INLINE

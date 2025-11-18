@@ -1,0 +1,20 @@
+// Analysis of summation over sets and subsets
+
+set time (t0) 'time';
+set regions (USA, AUS, ROW) 'Regions' ;
+set sectors (a1,a2) 'Sectors' ;
+set goods (g1,g2) 'Goods' ;
+
+// Some regions to play around with.
+set not_usa = regions - (USA)  'all regions except the USA' ;
+set other_regions = not_usa ;
+
+// Using set membership to define parts of domain
+variable INTN(regions) 'nominal interest rate' end,pct ;
+INTN(USA) = 3.6 ;
+// USA: INTN = 3.6 ; // is also valid and equivalent to the line above.
+not_usa: INTN = 4.6 ;
+
+// Demonstrate that we can do a summation over a subset.
+variable SUMINTN 'odd variable to test summation over part of domain' end,pct ;
+SUMINTN = sum(other_regions, INTN) ;

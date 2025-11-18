@@ -1,0 +1,30 @@
+// grammar.lark
+//
+// Grammar for declared names with types of names and where each name has:
+// one short label
+// an optional markdown documentation.
+
+start: declaration+                          // separators ignored globally
+
+// TYPE NAME ":" label [doc]
+declaration: TYPE NAME ":" label doc?         -> decl
+
+label: ESCAPED_STRING
+doc:   TRIPLE_STRING
+
+// Allowed declaration types (all lower-case)
+TYPE: "value" | "dimension" | "dimensions" | "domain" | "parameter" | "variable" | "equation"
+
+// Names follow standard identifier rules
+NAME: /[A-Za-z_]\w*/
+
+// Allow newlines/semicolons anywhere as separators
+SEP: /[;\r\n]+/
+%ignore SEP
+
+// Triple-quoted block for optional markdown
+TRIPLE_STRING: /\"\"\"(.|\n)*?\"\"\"/
+
+%import common.ESCAPED_STRING
+%import common.WS_INLINE
+%ignore WS_INLINE

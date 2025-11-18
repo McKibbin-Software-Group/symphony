@@ -1,0 +1,28 @@
+// Analysis of ?
+
+set time (t0) 'time';
+set regions (USA, ROW) 'Regions' ;
+set sectors (a1,a2) 'Sectors' ;
+set goods (g1,g2) 'Goods' ;
+
+set dest = regions ;
+set orig = regions ;
+
+variable PRX(goods,regions)   'price of exports'      end,idx,logged ;
+variable PIM(goods,dest,orig) 'price of imports'      end,idx,logged ;
+variable EXCH(regions)        'exch rate (USD / LCU)' end,idx,logged ;
+
+EXCH = 0 ;
+PRX = 1 ;
+
+// Note the use of the set name  EXCH(set_name) on RHS to specify which value to use from the PIM being set when it is ambiguous.
+// Note the use of #dest to repeat the PRX(orig) value for each value of dest. (Is this entirely necessary syntax or does it just obfuscate? Can it be unclear?)
+// It might be better if we just identify which sets in the set list defining the domain of the variable cannot be matched up to the sets in the set list for
+// the domain of the LHS variable and replicate as needed to achieve a "domain match".
+// What if two sets were missing in PRX - how could I duplicate for both of them using the #... syntax?
+//PIM = EXCH(orig) + PRX(orig)#dest - EXCH(dest) ;
+
+PIM = EXCH(orig) + PRX(orig)#dest - EXCH(dest) ;
+
+// Note that PIM(g1,USA,USA) makes no sense - we should have a way of removing it from the domain.
+

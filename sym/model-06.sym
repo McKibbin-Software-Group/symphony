@@ -1,0 +1,45 @@
+// Analysis of summation semantics for regions and bilateral imports
+
+set time (t0) 'time';
+set regions (USA, ROW) 'Regions' ;
+set sectors (a1,a2) 'Sectors' ;
+set goods (g1,g2) 'Goods' ;
+
+// Some regions to play around with.
+set dest = regions ;
+set orig = regions ;
+set other_goods = goods ;
+
+variable INTN(regions) 'nominal interest rate' end,pct ;
+INTN = 3.6 ;
+
+variable IMP(goods,dest,orig) 'imports of good by region from region' sta,gdp ;
+variable IMPT(dest,orig) 'total imports by region from region' end,gdp ;
+variable IMPT2(dest,orig) 'total imports by region from region' end,gdp ;
+
+lead(IMP) = IMP  ;
+
+// Summing over one of the sets in the set list that defines the domain for IMP.
+// Note that the sum can be over goods or other_goods. In other words, it is defined by the members of the set rather than the set being summed over.
+IMPT = sum(goods, IMP) ;
+IMPT2 = sum(other_goods, IMP);
+
+
+// We have a counter example though where we cannot sum over regions
+// to get IMPTD or IMPTO and we cannot sum over dest to get IMPTD
+// and we cannot sum over orig to get IMPTO.
+// That suggests that the set names do have some semantic relevance.
+variable IMPTD(regions) 'Total imports by destination region' end,gdp ;
+variable IMPTO(regions) 'Total imports by destination region' end,gdp ;
+IMPTD = sum(orig, IMPT) ;
+IMPTO = sum(dest, IMPT) ;
+
+// Quoting from Pete's documentation of SYM:
+
+// Sym will automatically coerce variables defined over parent sets to aliases when it can do
+// so unambiguously. In these equations, the left hand side variables are defined over
+// “regions”. After the summation, the right hand sides will be defined over “owner”, an
+// alias of “regions”. Because there is no ambiguity about the meaning of the equation, for
+// conformability tests, Sym will automatically treat IRAS and INAS as though they had
+// been defined over “owner”.
+

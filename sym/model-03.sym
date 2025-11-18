@@ -9,4 +9,10 @@ variable cap(regions) 'capital' sta,gdp ;
 variable stuff(regions) 'stuff' end,gdp ;
 
 lead(cap) = cap ;
-stuff=lead(cap) ;
+stuff=cap ;
+
+set all_regions = regions + (AUS, GBR, ROW) ;
+
+set some_regions = all_regions(AUS, GBR) ;
+
+set all_regions2 = all_regions ;

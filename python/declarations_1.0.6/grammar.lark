@@ -1,0 +1,53 @@
+// grammar.lark
+// Grammar for declared names with types of names and where each name has:
+// one short label
+// an optional markdown documentation.
+// 'dimension' and 'category' may carry member lists (NAMEs only).
+// Types are lower-case: member | dimension | dimensions | domain | parameter | variable | equation | category
+// Separators are newlines; semicolons are allowed anywhere as well.
+
+start: declaration+
+
+declaration: dim_or_cat_decl
+           | other_decl
+
+// dimension/category: may optionally include an ordered list of NAMEs
+dim_or_cat_decl: (TYPE_DIMENSION | TYPE_CATEGORY) NAME ":" label dimension_values? doc? -> decl
+
+other_decl: TYPE_MEMBER NAME ":" label doc? -> decl
+          | TYPE_DIMENSIONS NAME ":" label doc? -> decl
+          | TYPE_DOMAIN NAME ":" label doc? -> decl
+          | TYPE_PARAMETER NAME ":" label doc? -> decl
+          | TYPE_VARIABLE NAME ":" label doc? -> decl
+          | TYPE_EQUATION NAME ":" label doc? -> decl
+
+// A comma-separated list of NAMEs within brackets
+dimension_values: "[" NAME ("," NAME)* "]"
+
+label: ESCAPED_STRING
+doc: TRIPLE_STRING
+
+// Keywords as explicit terminals (keep values lower-case)
+TYPE_MEMBER: "member"
+TYPE_DIMENSION: "dimension"
+TYPE_DIMENSIONS: "dimensions"
+TYPE_DOMAIN: "domain"
+TYPE_PARAMETER: "parameter"
+TYPE_VARIABLE: "variable"
+TYPE_EQUATION: "equation"
+TYPE_CATEGORY: "category"
+
+// Identifiers
+NAME: /[A-Za-z_]\w*/
+
+// Separators: newline or ';' anywhere
+SEP: /[;\r\n]+/
+%ignore SEP
+
+// Triple-quoted Markdown block
+TRIPLE_STRING: /\"\"\"(.|\n)*?\"\"\"/
+
+// Common terminals
+%import common.ESCAPED_STRING
+%import common.WS_INLINE
+%ignore WS_INLINE

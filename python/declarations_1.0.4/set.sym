@@ -1,0 +1,17 @@
+member USA: "USA"
+
+member AUS: "Australia"
+
+member ROW: "Rest of World"
+
+dimension regions: "regions of the world"
+
+[USA,AUS,ROW]
+
+"""
+## The regions of the world. 
+
+Some regions are single countries and other regions consist of several countries.
+"""
+
+

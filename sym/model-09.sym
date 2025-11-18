@@ -1,0 +1,29 @@
+// Analysis of summation over sets and subsets
+
+set time (t0) 'time';
+set regions (USA, AUS, ROW) 'Regions' ;
+set sectors (a1,a2) 'Sectors' ;
+set goods (g1,g2) 'Goods' ;
+
+// Some regions to play around with.
+set not_usa = regions - (USA)  'all regions except the USA' ;
+set other_regions = not_usa ;
+set orig = regions ;
+set dest = regions ;
+
+variable REXC(regions) 'real exchange rate' cos,idx,logged ;
+variable PRID(regions) 'real exchange rate' ets,idx,logged ;
+variable EXCH(regions) 'nominal exchange rate' end,idx,logged ;
+variable NEER(regions) 'nominal TW exchange rate' end,idx,logged ;
+
+parameter eer_weight(orig,dest) ;
+
+lead(REXC) = 1 ;
+PRID = 1 ;
+
+EXCH(USA) = 1 ;
+// not_usa: EXCH = REXC - PRID + PRID(USA) ; // This does not work but it sort of should...
+EXCH(not_usa) = REXC(not_usa) - PRID(not_usa) + PRID(USA) ;
+
+
+NEER(regions) = - sum(orig, eer_weight*(EXCH(orig)#dest-EXCH(dest)) );

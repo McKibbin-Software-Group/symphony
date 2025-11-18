@@ -1,7 +1,7 @@
 Run Specifications:
    Sym build 964 (2020/07/06)
    Target language: python
-   Source file: model-05.sym
+   Source file: model-03.sym
 
 Intertemporal Details:
 
@@ -9,13 +9,21 @@ Intertemporal Details:
 
 Sets:
 
+   all_regions
+      Base set: self
+         USA,AUS,GBR,ROW
+
+   all_regions2
+      Base set: all_regions
+         USA,AUS,GBR,ROW
+
    goods
       Base set: self
       Good 1 
          g1
 
    regions
-      Base set: self
+      Base set: all_regions
       United States 
          USA
 
@@ -23,6 +31,10 @@ Sets:
       Base set: self
       Sector 1 
          a1
+
+   some_regions
+      Base set: all_regions
+         AUS,GBR
 
    time
       Base set: self
@@ -35,47 +47,47 @@ Parameters:
 
 Variables:
 
-   EXCH
-      nominal exchange rate (end,idx)
+   cap
+      capital (gdp,sta)
          regions
 
-   EXCL
-      nominal exchange rate - lagged (idx,sta)
+   stuff
+      stuff (end,gdp)
          regions
 
 
 Unique Elements:
 
-   a1,g1,t0,USA
+   a1,AUS,g1,GBR,ROW,t0,USA
 
 Equations Using Each Parameter:
 
 
 Equations Using Each Variable:
 
-   EXCH:
+   cap:
       LHS 1
-      RHS 2
-   EXCL:
+      RHS 1,2
+   stuff:
       LHS 2
       RHS none
 
 
 Equation 1
 ----------
+Relative Time: [0,1]
 Domain: regions
 Count: 1 (1 to 1)
 
-   EXCH=0
+   lead(cap)=cap
 
 
 Equation 2
 ----------
-Relative Time: [0,1]
 Domain: regions
 Count: 1 (2 to 2)
 
-   lead(EXCL)=EXCH
+   stuff=cap
 
 
 Length of MSGPROC Vectors:
