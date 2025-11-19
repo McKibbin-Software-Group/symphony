@@ -91,13 +91,13 @@ class CategoryDecl(Decl):
 
 DeclNode = Union[
     MemberDecl,
+    CategoryDecl,
     DimensionDecl,
     DimensionsDecl,
     DomainDecl,
     ParameterDecl,
     VariableDecl,
     EquationDecl,
-    CategoryDecl,
 ]
 
 
@@ -106,12 +106,14 @@ class Program:
     decls: List[DeclNode]
 
 
+
 # ========= Transformer =========
 
-# Internal structures used while transforming a dimension expression
-DimTerm = Tuple[str, Any]   # ("list", List[Token]) | ("ref", Tuple[str, SourcePos])
-DimExpr = Tuple[str, Any, List[Tuple[str, Any]]]  # ("expr", first_term, [(op, term), ...])
+Documentation = Tuple[str, SourcePosition] # The content and position of a docstring documentation for an entity.
 
+# Internal structures used while transforming a dimension expression
+DimTerm = Tuple[str, Any]   # ("name_list", List[Token]) | ("ref", Tuple[str, SourcePos])
+DimExpr = Tuple[str, Any, List[Tuple[str, Any]]]  # ("dimension_expression", first_term, [(op, term), ...])
 
 @v_args(meta=True)
 class ToAST(Transformer):
@@ -135,6 +137,7 @@ class ToAST(Transformer):
 
     def __init__(self) -> None:
         super().__init__()
+        
         # Symbol tables
         self._declared_members: set[str] = set()
         self._member_category: Dict[str, str] = {}
@@ -163,12 +166,13 @@ class ToAST(Transformer):
         # Strip the triple quotes:
         return token.value[3:-3], self._position(token)
 
-    # Dimension expression pieces
-    def dimension_list(self, meta: Any, items: List[Token]) -> DimTerm:
+    # Name list
+    def name_list(self, meta: Any, items: List[Token]) -> DimTerm:
         # Keep tokens so we have accurate error positions
-        return ("dimension_list", items)
+        return ("name_list", items)
 
     def dimension_reference(self, meta: Any, items: List[Token]) -> DimTerm:
+        # Can be a reference to a dimension or a category (that is implicitly also a dimension)
         name_token: Token = items[0]
         return ("dimension_reference", (str(name_token), self._position(name_token)))
 
@@ -191,24 +195,36 @@ class ToAST(Transformer):
     def declaration(self, meta: Any, items: list[Any]) -> Any:
         return items[0]
 
-    # Utilities to robustly extract optional pieces regardless of order/presence
     @staticmethod
-    def _pick_doc_and_expr(extra: List[Any]) -> Tuple[Optional[Tuple[str, SourcePosition]], Optional[DimExpr]]:
-        doc_pair: Optional[Tuple[str, SourcePosition]] = None
-        expr: Optional[DimExpr] = None
-        for it in extra:
-            if isinstance(it, tuple):
+    def _pick_doc_and_expr(extra_items: List[Any]) -> Tuple[Optional[Tuple[str, SourcePosition]], Optional[DimExpr]]:
+        """
+        
+        ### Overview
+        
+        Utilities to robustly extract optional pieces regardless of order/presence
+        
+        """
+        documentation: Optional[Documentation] = None
+        expression: Optional[DimExpr] = None
+        for item in extra_items:
+            logging.debug(f"Examining extra item: {item}")
+            if isinstance(item, tuple):
                 # expr tuples are marked with first element "expr"
-                if len(it) >= 1 and isinstance(it[0], str) and it[0] == "expr":
-                    expr = it  # type: ignore[assignment]
+                if len(item) >= 1 and isinstance(item[0], str) and item[0] == "dimension_expression":
+                    expression = item  # type: ignore[assignment]
                 else:
                     # treat as doc payload (text, pos)
-                    if doc_pair is None and len(it) == 2 and isinstance(it[0], str):
-                        doc_pair = it  # type: ignore[assignment]
-        return doc_pair, expr
+                    if documentation is None and len(item) == 2 and isinstance(item[0], str):
+                        documentation = item  # type: ignore[assignment]
+        return documentation, expression
 
     @staticmethod
     def _pick_doc_and_list(extra: List[Any]) -> Tuple[Optional[Tuple[str, SourcePosition]], Optional[DimTerm]]:
+        """
+        
+        Utilities to robustly extract optional pieces regardless of order/presence
+        
+        """
         doc_pair: Optional[Tuple[str, SourcePosition]] = None
         list_term: Optional[DimTerm] = None
         for it in extra:
@@ -230,28 +246,57 @@ class ToAST(Transformer):
         return self._build_category(type_tok, name_tok, label_text, label_pos, list_term, doc_pair)
 
     def dimension_decl(self, meta: Any, items: list[Any]) -> DeclNode:
+        """
+        ### Overview
+
+        Handles 'dimension' declarations of the form:
+
+        dimension_decl:  "dimension" NAME ":" label dimension_expression? doc?
+
+        ### Parameters
+
+        - `meta`: Metadata about the parse tree node (not used here).
+        - `items`: A list of parsed items from the declaration, expected to contain:
+            - `items[0]`: NAME token representing the dimension name.
+            - `items[1]`: A tuple containing the label text and its source position.
+            - `items[2:]`: Optional items that may include a dimension expression and/or documentation.
+
+        ### Returns
+
+        - A `DimensionDecl` AST node representing the dimension declaration.
+
+        """
         # "dimension" NAME ":" label (dim_expr)? (doc)?
         type_tok = Token("TYPE", "dimension")
         name_tok: Token = items[0]
         label_text, label_pos = items[1]
 
+        
         # The rest (if any) can appear in any order; both are optional
-        doc_pair, expr = self._pick_doc_and_expr(items[2:])
-        return self._build_dimension(type_tok, name_tok, label_text, label_pos, expr, doc_pair)
+        documentation, expression = self._pick_doc_and_expr(items[2:])
+
+        logging.debug(
+            f"Processing {name_tok} dimension declaration:"
+            f" documentation={documentation}"
+            f" expression={expression}"
+        )
+
+
+        return self._build_dimension(type_tok, name_tok, label_text, label_pos, expression, documentation)
 
     def other_decl(self, type:str, meta: Any, items: list[Any]) -> DeclNode:
         # 
         type_token: Token = Token("TYPE", type)
         name_token: Token = items[0]
-        label_text, label_pos = items[1]
+        label_text, label_position = items[1]
 
         # Everything after the label is optional; take the first (text, pos) tuple as doc if present
-        doc_pair: Optional[Tuple[str, SourcePosition]] = None
-        for it in items[2:]:
-            if isinstance(it, tuple) and len(it) == 2 and isinstance(it[0], str):
-                doc_pair = it  # type: ignore[assignment]
+        documentation: Optional[Documentation] = None
+        for item in items[2:]:
+            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str):
+                documentation = item  # type: ignore[assignment]
                 break
-        return self._build_other(type_token, name_token, label_text, label_pos, doc_pair)
+        return self._build_other(type_token, name_token, label_text, label_position, documentation)
     
     def member_decl(self, meta: Any, items: list[Any]) -> DeclNode:
         # 
@@ -273,8 +318,6 @@ class ToAST(Transformer):
         # 
         return self.other_decl("dimensions", meta, items)
 
-
-
     # ---- builders ----
 
     def _build_dimension(
@@ -284,14 +327,14 @@ class ToAST(Transformer):
         label_text: str,
         label_pos: SourcePosition,
         expr: Optional[DimExpr],
-        doc_pair: Optional[Tuple[str, SourcePosition]],
+        documentation: Optional[Documentation],
     ) -> DimensionDecl:
         type_pos = self._position(type_tok)
         name_pos = self._position(name_tok)
         name_str = str(name_tok)
 
         # Evaluate the expression (or empty -> [])
-        values_list: List[str] = self._evaluate_dim_expr(expr) if expr else []
+        values_list: List[str] = self._evaluate_dimension_expression(expr) if expr else []
 
         # Check category membership constraints (must exist and be single category)
         missing: List[str] = [m for m in values_list if m not in self._member_category]
@@ -321,8 +364,8 @@ class ToAST(Transformer):
             name_pos=name_pos,
             label=label_text,
             label_pos=label_pos,
-            doc=doc_pair[0] if doc_pair else None,
-            doc_pos=doc_pair[1] if doc_pair else None,
+            doc=documentation[0] if documentation else None,
+            doc_pos=documentation[1] if documentation else None,
             dimension_values=values_list,
         )
         # Register for future references
@@ -529,10 +572,29 @@ class ToAST(Transformer):
         else:
             raise AssertionError(f"Unknown dim term tag: {tag}")
 
-    def _evaluate_dim_expr(self, expr: Optional[DimExpr]) -> List[str]:
+    def _evaluate_dimension_expression(self, expr: Optional[DimExpr]) -> List[str]:
+        """
+        
+        ### Overview
+
+        Evaluates a dimension expression into a list of member names.
+
+        ### Parameters
+
+        - `expr`: An optional dimension expression represented as a tuple:
+
+        ### Returns
+
+        - A list of member names resulting from evaluating the expression.
+
+        """
         if not expr:
             return []
+        logging.warning(f"The expression being analysed is\n{expr}")
         _tag, first, ops = expr
+
+        logging.debug(f"The tag is {_tag}, first is {first}, ops are {ops}")
+
         # Start from first term
         # Use a copy to avoid aliasing stored dimensions
         result: List[str] = list(self._eval_term(first, owner_dim="(evaluating)"))

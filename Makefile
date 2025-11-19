@@ -1,8 +1,8 @@
 # Custom Lark Parser variable definitions
 GRAMMAR = grammar.lark
 MODEL = model.sym
-MODEL_PARSER = ToAST.py
-CASE = 1.0.7
+MODEL_PARSER = symphony_toast.py
+CASE = 1.0.8
 DECLARATIONS = declarations_${CASE}
 
 # Custom SYM processor variable definitions
@@ -16,9 +16,8 @@ default: run
 run:
 	@echo "Running use case ${CASE} ${MODEL} with ${MODEL_PARSER} ..." ; \
 	cd python/${DECLARATIONS}/ ; \
-	python ${MODEL_PARSER} --grammar ${GRAMMAR} ${MODEL}; \
+	python ${MODEL_PARSER} ${GRAMMAR} ${MODEL}; \
 	cd ../.. ; 
-
 
 # Generate html and sym files on MacOS for the model using the sym processor
 sym:

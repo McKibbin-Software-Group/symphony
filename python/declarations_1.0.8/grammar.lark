@@ -27,10 +27,11 @@ declaration: member_decl
            | variable_decl
            | equation_decl
 
-member_decl:     "member"    NAME ":" label doc?
-category_decl:   "category"  NAME ":" label name_list doc?
-dimension_decl:  "dimension" NAME ":" label dimension_expression doc?
+member_decl:     "member"     NAME ":" label doc?
+category_decl:   "category"   NAME ":" label name_list doc?
+dimension_decl:  "dimension"  NAME ":" label dimension_expression doc?
 dimensions_decl: "dimensions" NAME ":" label name_list doc?
+domain_decl:     "domain"     NAME ":" label domain_expression? doc?
 parameter_decl:  "parameter"  NAME ":" label units doc?
 variable_decl:   "variable"   NAME ":" label units deviation_units dimensions_decl logged? intertemporal? doc?
 equation_decl:   "equation"   NAME ":" label equation_expression doc?
@@ -57,6 +58,9 @@ dimension_term: name_list
 
 // Bracketed list of names 
 name_list: "[" [NAME ("," NAME)*] "]"
+
+// Domain expressions
+domain_expression: "to be completed"
 
 // Equation expressions
 equation_expression: "to be completed"
