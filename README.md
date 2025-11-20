@@ -1,4 +1,4 @@
-# symphony
+# Symphony
 
 Python implementation of a model definition language drawing on [SYM](https://github.com/pjwilcoxen/sym).
 
@@ -9,4 +9,4 @@ Python implementation of a model definition language drawing on [SYM](https://gi
 ## Contents
 
 * [Sym examples](sym)
-* [Python implementation of Symphony using the Lark parser](python).
+* [Python implementation of Symphony using the Lark parser](python/README.md).
