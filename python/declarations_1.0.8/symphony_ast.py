@@ -238,7 +238,7 @@ def program_to_summary_text(program: Program, show_pos: bool = False) -> str:
         if isinstance(decl, CategoryDeclaration):
             extras.append(f"members={decl.dimension_members}")
         elif isinstance(decl, DimensionDeclaration):
-            extras.append(f"dimension_values={decl.dimension_members}")
+            extras.append(f"members={decl.dimension_members}")
         if show_pos:
             extras.append(f"@{decl.type_pos.line}:{decl.type_pos.column}")
         if extras:

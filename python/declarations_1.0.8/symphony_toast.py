@@ -2,9 +2,14 @@
 # Lark transformer, parser wiring, CLI
 from __future__ import annotations
 
+import logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(levelname)s %(filename)s:%(lineno)d — %(message)s"
+)
+
 import argparse
 import json
-import logging
 import pathlib
 import sys
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -29,8 +34,6 @@ from symphony_ast import (
     program_to_summary_text,
 )
 
-# Configure logging to the console.
-logging.basicConfig(level=logging.DEBUG)
 
 # The content + position of a docstring for an entity.
 Documentation = Tuple[str, SourcePosition]
@@ -99,7 +102,7 @@ class ToAST(Transformer):
         return ("list", items)
 
     def dimension_reference(self, meta: Any, items: List[Token]) -> DimensionTerm:
-        # Reference to a previously-declared dimension
+        # Reference to a previously-declared dimension (or category)
         name_token: Token = items[0]
         return ("dimension reference", (str(name_token), self._position(name_token)))
 
@@ -138,7 +141,6 @@ class ToAST(Transformer):
         documentation: Optional[Documentation] = None
         expression: Optional[DimensionExpression] = None
         for item in extra_items:
-            logging.debug("Examining extra item: %r", item)
             if isinstance(item, tuple):
                 if len(item) >= 1 and isinstance(item[0], str) and item[0] == "dimension_expression":
                     expression = item  # type: ignore[assignment]
@@ -182,13 +184,6 @@ class ToAST(Transformer):
         label_text, label_pos = items[1]
 
         documentation, expression = self._pick_doc_and_expr(items[2:])
-
-        logging.debug(
-            "Processing dimension %r: documentation=%r expression=%r",
-            name_tok,
-            documentation,
-            expression,
-        )
 
         return self._build_dimension(type_tok, name_tok, label_text, label_pos, expression, documentation)
 
@@ -246,17 +241,17 @@ class ToAST(Transformer):
         name_str = str(name_tok)
 
         # Evaluate the expression (or empty -> [])
-        values_list: List[str] = self._evaluate_dimension_expression(expr) if expr else []
+        members: List[str] = self._evaluate_dimension_expression(expr) if expr else []
 
         # Check category membership constraints (must exist and be single category)
-        missing: List[str] = [m for m in values_list if m not in self._member_category]
+        missing: List[str] = [m for m in members if m not in self._member_category]
         if missing:
             raise ValueError(
                 f"Dimension '{name_str}' lists members not assigned to any category: "
                 f"{', '.join(sorted(missing))}. Declare a category including these members before this dimension."
             )
 
-        cats = {self._member_category[m] for m in values_list}
+        cats = {self._member_category[m] for m in members}
         if len(cats) > 1:
             cats_str = ", ".join(sorted(cats))
             raise ValueError(
@@ -272,10 +267,10 @@ class ToAST(Transformer):
             label_pos=label_pos,
             doc=documentation[0] if documentation else None,
             doc_pos=documentation[1] if documentation else None,
-            dimension_members=values_list,
+            dimension_members=members,
         )
         # Register for future references
-        self._declared_dimensions[name_str] = values_list
+        self._declared_dimensions[name_str] = members
         return node
 
     def _build_category(
@@ -322,6 +317,7 @@ class ToAST(Transformer):
             doc_pos=documentation[1] if documentation else None,
             dimension_members=members,
         )
+        self._declared_dimensions[name_str] = members
         return node
 
     def _build_other(
@@ -459,7 +455,7 @@ class ToAST(Transformer):
             return base
         return [x for x in base if x not in remove_set]
 
-    def _eval_term(self, term: DimensionTerm, owner_dim: str) -> List[str]:
+    def _eval_dimension_term(self, term: DimensionTerm, owner_dim: str) -> List[str]:
         tag, payload = term
         if tag == "list":
             return self._validate_member_tokens(payload, f"dimension '{owner_dim}'")
@@ -482,10 +478,10 @@ class ToAST(Transformer):
         tag, first, ops = expr
         assert tag == "dimension_expression"
         # Start from first term
-        result: List[str] = list(self._eval_term(first, owner_dim="(evaluating)"))
+        result: List[str] = list(self._eval_dimension_term(first, owner_dim="(evaluating)"))
         # Apply operations in order
         for op, term in ops:
-            values = self._eval_term(term, owner_dim="(evaluating)")
+            values = self._eval_dimension_term(term, owner_dim="(evaluating)")
             if op == "+":
                 result = self._union_preserving(result, values)
             elif op == "-":

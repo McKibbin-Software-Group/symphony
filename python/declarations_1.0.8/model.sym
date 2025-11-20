@@ -18,11 +18,15 @@ dimension colour: "Available colours" [red, green, blue] """All the available co
 
 dimension fixed: "Just Red and Green" [red, green]
 
-dimension red_green: "Red and Green by subtracting Blue from All Colours category" colour - [blue]
+dimension red_green: "Red and Green by subtracting Blue from All Colours" colours - [blue]
 
-dimension red_blue: "Red and Blue by subtracting Green from All Colours dimension" colour - [green]
+dimension red_blue: "Red and Blue by subtracting Green from All Colours" colours - [green]
+
+dimension red: "Red by subtracting Blue from red_blue" red_blue - [blue]
 
 dimension blue_only: "Blue only" [blue]
+
 dimension rgb: "Red Green and Blue" red_green + blue_only
 
+dimension red_green_blue: "Red and green and blue via addition" [red] + blue_only + red_green
 
