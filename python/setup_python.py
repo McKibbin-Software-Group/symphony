@@ -1,4 +1,4 @@
-# Expected you will adapt this per customer/model/build
+# Script to run to set up Python virtual environment.
 import gcubed_build_switcher
 import sys
 
