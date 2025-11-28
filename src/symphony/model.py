@@ -1,13 +1,14 @@
 # symphony_model.py
-# symbol tables and model object
+# TODO: Eventually to be replaced fully by a mult-pass processor.
+# # symbol tables and model object
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Set
 
-from symphony_ast import (
+from abstract_syntax_tree import (
     CategoryDeclaration,
-    DeclNode,
+    DeclarationNode,
     DimensionDeclaration,
     MemberDeclaration,
     Program,
@@ -50,7 +51,7 @@ class ModelBuilder:
 
         return Model(program=program, symbols=symbols)
 
-    def _visit_decl(self, decl: DeclNode, symbols: SymbolTables) -> None:
+    def _visit_decl(self, decl: DeclarationNode, symbols: SymbolTables) -> None:
         if isinstance(decl, MemberDeclaration):
             if decl.name in symbols.members:
                 # The transformer already enforces uniqueness; treat this as a sanity check.

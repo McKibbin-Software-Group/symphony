@@ -35,6 +35,13 @@ DomainTuple = List[str] # The list of members in a domain tuple.
 
 Documentation = Tuple[str, SourcePosition] # The content and position of a docstring documentation for an entity.
 
+# Internal structures used for dimension expressions:
+# ("list", List[Token])  -> a bracketed list of member names
+# ("dimension reference", (name, SourcePosition)) -> reference to a dimension
+DimensionTerm = Tuple[str, Any]
+
+# ("dimension_expression", first_term, [(op, term), ...])
+DimensionExpression = Tuple[str, DimensionTerm, List[Tuple[str, DimensionTerm]]]
 
 @dataclass(frozen=True)
 class Declaration:
@@ -66,10 +73,17 @@ class MemberDeclaration(Declaration):
 class DimensionDeclaration(Declaration):
     """
     `dimension` NAME ":" label dimension_expression? doc?
-    
-    `dimension_members` is the list of names of the members in this dimension
+
+    Pass 1:
+        - `dimension_expression` holds the raw dimension expression AST.
+        - `dimension_members` is left empty.
+
+    Later semantic passes:
+        - evaluate `dimension_expression`
+        - fill `dimension_members` with the resolved member names.
     """
     dimension_members: List[str]
+    dimension_expression: Optional[DimensionExpression] = None
 
 
 @dataclass(frozen=True)
@@ -123,7 +137,7 @@ class EquationDeclaration(Declaration):
     pass
 
 
-DeclNode = Union[
+DeclarationNode = Union[
     MemberDeclaration,
     CategoryDeclaration,
     DimensionDeclaration,
@@ -140,12 +154,12 @@ class Program:
     """
     Root node: a flat list of declarations.
     """
-    decls: List[DeclNode]
+    decls: List[DeclarationNode]
 
 
 # ========= AST text / summary printers =========
 
-def _is_pos_like(field_name: str, value: Any) -> bool:
+def _is_position_like(field_name: str, value: Any) -> bool:
     if field_name.endswith("_pos"):
         return True
     if is_dataclass(value):
@@ -168,7 +182,7 @@ def _format_inline_value(val: Any) -> str:
     return sval
 
 
-def _dc_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, List[Tuple[str, list]]]]]:
+def _dataclass_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, List[Tuple[str, list]]]]]:
     """
     Convert a dataclass instance into a generic (label, children) tree.
     """
@@ -183,7 +197,7 @@ def _dc_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, List[Tu
         val = getattr(node, f.name)
 
         # Hide position-like fields when show_pos is False
-        if not show_pos and _is_pos_like(f.name, val):
+        if not show_pos and _is_position_like(f.name, val):
             continue
 
         if is_dataclass(val):
@@ -199,19 +213,19 @@ def _dc_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, List[Tu
     children: List[Tuple[str, List[Tuple[str, list]]]] = []
     for name, val in child_slots:
         if isinstance(val, list):
-            kids = [_dc_to_tree(v, show_pos) for v in val]
+            kids = [_dataclass_to_tree(v, show_pos) for v in val]
             children.append((f"{name}[]", kids))
         else:
-            klabel, kchildren = _dc_to_tree(val, show_pos)
+            klabel, kchildren = _dataclass_to_tree(val, show_pos)
             children.append((name, [(klabel, kchildren)]))
     return (label, children)
 
 
-def ast_to_text(root: Any, show_pos: bool = False) -> str:
+def abstract_syntax_tree_to_text(root: Any, show_pos: bool = False) -> str:
     """
     Pretty ASCII tree representation of the AST.
     """
-    root_label, root_children = _dc_to_tree(root, show_pos)
+    root_label, root_children = _dataclass_to_tree(root, show_pos)
 
     def walk(label: str, kids: List[Tuple[str, List[Tuple[str, list]]]], indent: str = "") -> List[str]:
         lines: List[str] = [f"{indent}{label}"]

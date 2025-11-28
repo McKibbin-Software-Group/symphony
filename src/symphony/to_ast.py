@@ -1,4 +1,5 @@
 # symphony_toast.py
+# TODO: Eventually to be replaced fully by a mult-pass processor.
 # Lark transformer, parser wiring, CLI
 from __future__ import annotations
 
@@ -17,9 +18,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from lark import Lark, Transformer, Token, Tree, v_args
 from lark.exceptions import UnexpectedCharacters, UnexpectedInput, UnexpectedToken
 
-from symphony_ast import (
+from abstract_syntax_tree import (
     CategoryDeclaration,
-    DeclNode,
+    DeclarationNode,
     DeclType,
     DimensionDeclaration,
     DimensionsDeclaration,
@@ -30,7 +31,7 @@ from symphony_ast import (
     Program,
     SourcePosition,
     VariableDeclaration,
-    ast_to_text,
+    abstract_syntax_tree_to_text,
     program_to_summary_text,
 )
 
@@ -168,7 +169,7 @@ class ToAST(Transformer):
 
     # --- concrete declaration rules ---
 
-    def category_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def category_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # "category" NAME ":" label name_list? doc?
         type_tok = Token("TYPE", "category")
         name_tok: Token = items[0]
@@ -177,7 +178,7 @@ class ToAST(Transformer):
         documentation, list_term = self._pick_doc_and_list(items[2:])
         return self._build_category(type_tok, name_tok, label_text, label_pos, list_term, documentation)
 
-    def dimension_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def dimension_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # "dimension" NAME ":" label dimension_expression? doc?
         type_tok = Token("TYPE", "dimension")
         name_tok: Token = items[0]
@@ -187,7 +188,7 @@ class ToAST(Transformer):
 
         return self._build_dimension(type_tok, name_tok, label_text, label_pos, expression, documentation)
 
-    def other_decl(self, kind: str, meta: Any, items: List[Any]) -> DeclNode:
+    def other_decl(self, kind: str, meta: Any, items: List[Any]) -> DeclarationNode:
         """
         Helper used by all 'simple' declaration rules that only have an
         optional docstring after the label.
@@ -205,23 +206,23 @@ class ToAST(Transformer):
 
     # Specific wrappers that match grammar rule names:
 
-    def member_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def member_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # BUGFIX: this must be 'member', not 'variable'
         return self.other_decl("member", meta, items)
 
-    def variable_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def variable_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         return self.other_decl("variable", meta, items)
 
-    def parameter_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def parameter_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         return self.other_decl("parameter", meta, items)
 
-    def equation_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def equation_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         return self.other_decl("equation", meta, items)
 
-    def dimensions_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def dimensions_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         return self.other_decl("dimensions", meta, items)
 
-    def domain_decl(self, meta: Any, items: List[Any]) -> DeclNode:
+    def domain_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # DeclType.domain existed, but the transformer previously lacked this entry point.
         return self.other_decl("domain", meta, items)
 
@@ -327,7 +328,7 @@ class ToAST(Transformer):
         label_text: str,
         label_pos: SourcePosition,
         doc_pair: Optional[Documentation],
-    ) -> DeclNode:
+    ) -> DeclarationNode:
         type_text: str = str(type_tok)
         if type_text != type_text.lower():
             raise ValueError(
@@ -497,7 +498,7 @@ class ToAST(Transformer):
 
     # ---- top-level rule ----
 
-    def start(self, meta: Any, items: List[DeclNode]) -> Program:
+    def start(self, meta: Any, items: List[DeclarationNode]) -> Program:
         # Final constraint: all declared members must be assigned to a category
         unassigned = [m for m in self._declared_members if m not in self._member_category]
         if unassigned:
@@ -606,7 +607,7 @@ def main() -> int:
         return 1
 
     if args.format == "tree":
-        output: str = ast_to_text(program, show_pos=args.show_pos)
+        output: str = abstract_syntax_tree_to_text(program, show_pos=args.show_pos)
     else:
         output = program_to_summary_text(program, show_pos=args.show_pos)
 

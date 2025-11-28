@@ -14,10 +14,14 @@ uv pip install -r requirements
 
 ## Processor usage
 
-usage: symphony_toast.py [-h] [--format {tree,summary}] [--show-pos] grammar input
+### Processor pass 1
+
+Parse into an abstract syntax tree in pass 1:
+
+```bash
+usage: processor.py [-h] [--format {tree,summary}] [--show-pos] input
 
 positional arguments:
-  grammar               Path to the .lark grammar file.
   input                 Path to the .sym model file.
 
 options:
@@ -25,3 +29,10 @@ options:
   --format {tree,summary}
                         Choose 'tree' for a full AST tree or 'summary' for one line per declaration.
   --show-pos            Include line/column position fields in the output.
+  ```
+
+  For example:
+
+  ```bash
+  usage: processor.py model.sym
+  ```

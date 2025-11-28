@@ -1,1 +1,9 @@
+numpy
+pandas
+ordered_set
+black
+wheel
+pytest
+build
+regex
 lark

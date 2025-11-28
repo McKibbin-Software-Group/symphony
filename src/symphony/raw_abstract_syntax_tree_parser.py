@@ -1,0 +1,370 @@
+# Builds the Pass 1 parser and transformer for Symphony.
+# It loads the packaged grammar, parses the model declaration into a Lark parse tree,
+# and produces a raw abstract syntax tree without semantic validation; later passes
+# handle ordering and cross-reference checks and other semantic analysis.
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Iterable, List, Optional, Tuple
+
+from lark import Lark, Transformer, Token, Tree, v_args
+
+from symphony.abstract_syntax_tree import (
+    CategoryDeclaration,
+    DeclarationNode,
+    DeclType,
+    DimensionDeclaration,
+    DimensionExpression,
+    DimensionTerm,
+    DimensionsDeclaration,
+    DomainDeclaration,
+    EquationDeclaration,
+    MemberDeclaration,
+    ParameterDeclaration,
+    Program,
+    SourcePosition,
+    VariableDeclaration,
+)
+
+# The content + position of a docstring for an entity.
+Documentation = Tuple[str, SourcePosition]
+
+
+@v_args(meta=True)
+class ToASTPass1(Transformer):
+    """
+    Pass 1: parse-tree → raw AST, with no semantic validation.
+
+    Responsibilities:
+      - Build AST nodes for all top-level declarations.
+      - Preserve dimension expressions in DimensionDeclaration.dimension_expression.
+      - Do NOT:
+          * check declaration order,
+          * check that dimensions / categories / domains exist,
+          * check category coverage or uniqueness,
+          * check for duplicate names.
+    """
+
+    # ---------- low-level helpers ----------
+
+    @staticmethod
+    def _position(token: Token) -> SourcePosition:
+        return SourcePosition(line=token.line, column=token.column)
+
+    @staticmethod
+    def _parse_escaped_string(token: Token) -> str:
+        """
+        Convert an ESCAPED_STRING token into its Python string content.
+        """
+        # Token.value includes the quotes; strip and unescape.
+        raw = token.value
+        return raw[1:-1].encode("utf-8").decode("unicode_escape")
+
+    # ---------- leaf grammar rules ----------
+
+    def label(self, meta: Any, items: List[Token]) -> Tuple[str, SourcePosition]:
+        assert len(items) == 1
+        tok = items[0]
+        return self._parse_escaped_string(tok), self._position(tok)
+
+    def doc(self, meta: Any, items: List[Token]) -> Documentation:
+        assert len(items) == 1
+        tok = items[0]
+        text = tok.value[3:-3]  # strip leading and trailing """ of TRIPLE_STRING
+        return text, self._position(tok)
+
+    def name_list(self, meta: Any, items: List[Token]) -> DimensionTerm:
+        # The grammar has "[ NAME (',' NAME)* ]"; here we see only NAME tokens.
+        return ("list", list(items))
+
+    def dimension_reference(self, meta: Any, items: List[Token]) -> DimensionTerm:
+        assert len(items) == 1
+        tok = items[0]
+        name = tok.value
+        pos = self._position(tok)
+        return ("dimension reference", (name, pos))
+
+    def dimension_expression(self, meta: Any, items: List[Any]) -> DimensionExpression:
+        """
+        Build a raw DimensionExpression:
+            ("dimension_expression", first_term, [(op, term), ...])
+        """
+        if not items:
+            empty: DimensionTerm = ("list", [])
+            return ("dimension_expression", empty, [])
+
+        first_term: DimensionTerm = items[0]
+        rest: List[Tuple[str, DimensionTerm]] = []
+        i = 1
+        while i < len(items):
+            op_token: Token = items[i]
+            term: DimensionTerm = items[i + 1]
+            rest.append((op_token.value, term))
+            i += 2
+        return ("dimension_expression", first_term, rest)
+
+    def dimension_term(self, meta: Any, items: List[Any]) -> DimensionTerm:
+        # Forward the term built by name_list or dimension_reference
+        assert len(items) == 1
+        return items[0]
+
+    # ---------- declaration wrapper ----------
+
+    def declaration(self, meta: Any, items: List[Any]) -> Any:
+        # The 'declaration' rule just wraps a more specific *_decl rule.
+        assert len(items) == 1
+        return items[0]
+
+    # ---------- helper extractors ----------
+
+    @staticmethod
+    def _pick_doc_and_expr(
+        extra_items: List[Any],
+    ) -> Tuple[Optional[Documentation], Optional[DimensionExpression]]:
+        documentation: Optional[Documentation] = None
+        expression: Optional[DimensionExpression] = None
+
+        for item in extra_items:
+            if not isinstance(item, tuple):
+                continue
+            # Dimension expressions are tagged by the first element.
+            if (
+                len(item) >= 1
+                and isinstance(item[0], str)
+                and item[0] == "dimension_expression"
+            ):
+                expression = item  # type: ignore[assignment]
+            elif documentation is None and len(item) == 2 and isinstance(item[0], str):
+                documentation = item  # type: ignore[assignment]
+
+        return documentation, expression
+
+    @staticmethod
+    def _pick_doc_and_list(
+        extra_items: List[Any],
+    ) -> Tuple[Optional[Documentation], Optional[DimensionTerm]]:
+        documentation: Optional[Documentation] = None
+        list_term: Optional[DimensionTerm] = None
+
+        for item in extra_items:
+            if not isinstance(item, tuple):
+                continue
+            if list_term is None and len(item) >= 1 and item[0] == "list":
+                list_term = item  # type: ignore[assignment]
+            elif documentation is None and len(item) == 2 and isinstance(item[0], str):
+                documentation = item  # type: ignore[assignment]
+
+        return documentation, list_term
+
+    # ---------- declaration rules ----------
+
+    def category_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        # "category" NAME ":" label name_list doc?
+        type_token = Token("TYPE", "category")
+        name_token: Token = items[0]
+        label_text, label_pos = items[1]
+        documentation, list_term = self._pick_doc_and_list(items[2:])
+        return self._build_category(
+            type_token, name_token, label_text, label_pos, list_term, documentation
+        )
+
+    def dimension_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        # "dimension" NAME ":" label dimension_expression doc?
+        type_token = Token("TYPE", "dimension")
+        name_token: Token = items[0]
+        label_text, label_pos = items[1]
+        documentation, expression = self._pick_doc_and_expr(items[2:])
+        return self._build_dimension(
+            type_token, name_token, label_text, label_pos, expression, documentation
+        )
+
+    def other_decl(self, kind: str, meta: Any, items: List[Any]) -> DeclarationNode:
+        """
+        Helper for declarations with just NAME ":" label doc?.
+        """
+        type_token = Token("TYPE", kind)
+        name_token: Token = items[0]
+        label_text, label_pos = items[1]
+
+        documentation: Optional[Documentation] = None
+        for item in items[2:]:
+            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str):
+                documentation = item  # type: ignore[assignment]
+                break
+
+        return self._build_other(type_token, name_token, label_text, label_pos, documentation)
+
+    # Rule-specific wrappers:
+
+    def member_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_decl("member", meta, items)
+
+    def parameter_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_decl("parameter", meta, items)
+
+    def variable_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_decl("variable", meta, items)
+
+    def equation_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_decl("equation", meta, items)
+
+    def dimensions_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_decl("dimensions", meta, items)
+
+    def domain_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        # Domain expressions are not yet implemented in the grammar
+        # beyond a placeholder, so we treat this like a simple decl.
+        return self.other_decl("domain", meta, items)
+
+    # ---------- builders ----------
+
+    def _build_dimension(
+        self,
+        type_token: Token,
+        name_token: Token,
+        label_text: str,
+        label_pos: SourcePosition,
+        expr: Optional[DimensionExpression],
+        documentation: Optional[Documentation],
+    ) -> DimensionDeclaration:
+        """
+        Build a DimensionDeclaration without evaluating the expression.
+        """
+        type_pos = self._position(type_token)
+        name_pos = self._position(name_token)
+        name_str = name_token.value
+
+        # Pass 1 leaves members empty; a later pass will fill them.
+        empty_members: List[str] = []
+
+        return DimensionDeclaration(
+            decl_type=DeclType.dimension,
+            type_pos=type_pos,
+            name=name_str,
+            name_pos=name_pos,
+            label=label_text,
+            label_pos=label_pos,
+            doc=documentation[0] if documentation else None,
+            doc_pos=documentation[1] if documentation else None,
+            dimension_members=empty_members,
+            dimension_expression=expr,
+        )
+
+    def _build_category(
+        self,
+        type_token: Token,
+        name_token: Token,
+        label_text: str,
+        label_pos: SourcePosition,
+        list_term: Optional[DimensionTerm],
+        documentation: Optional[Documentation],
+    ) -> CategoryDeclaration:
+        """
+        Build a CategoryDeclaration, preserving the member list syntactically.
+        No category-membership validation happens here.
+        """
+        type_pos = self._position(type_token)
+        name_pos = self._position(name_token)
+        name_str = name_token.value
+
+        members: List[str] = []
+        if list_term is not None:
+            tag, payload = list_term
+            if tag != "list":
+                raise ValueError("Internal error: expected list term for category.")
+            tokens: Iterable[Token] = payload
+            members = [tok.value for tok in tokens]
+
+        return CategoryDeclaration(
+            decl_type=DeclType.category,
+            type_pos=type_pos,
+            name=name_str,
+            name_pos=name_pos,
+            label=label_text,
+            label_pos=label_pos,
+            doc=documentation[0] if documentation else None,
+            doc_pos=documentation[1] if documentation else None,
+            dimension_members=members,
+        )
+
+    def _build_other(
+        self,
+        type_token: Token,
+        name_token: Token,
+        label_text: str,
+        label_pos: SourcePosition,
+        doc_pair: Optional[Documentation],
+    ) -> DeclarationNode:
+        """
+        Build all other declaration types that do not carry expressions in Pass 1.
+        """
+        type_text = type_token.value
+        if type_text != type_text.lower():
+            raise ValueError(
+                f"Declaration type must be lower-case, found '{type_text}' "
+                f"at {type_token.line}:{type_token.column}"
+            )
+
+        try:
+            decl_type = DeclType(type_text)
+        except ValueError as exc:
+            raise ValueError(
+                f"Unknown declaration type '{type_text}' at {type_token.line}:{type_token.column}"
+            ) from exc
+
+        type_pos = self._position(type_token)
+        name_pos = self._position(name_token)
+        name_str = name_token.value
+
+        common_kwargs = dict(
+            decl_type=decl_type,
+            type_pos=type_pos,
+            name=name_str,
+            name_pos=name_pos,
+            label=label_text,
+            label_pos=label_pos,
+            doc=doc_pair[0] if doc_pair else None,
+            doc_pos=doc_pair[1] if doc_pair else None,
+        )
+
+        if decl_type == DeclType.member:
+            return MemberDeclaration(**common_kwargs)  # type: ignore[arg-type]
+        if decl_type == DeclType.parameter:
+            return ParameterDeclaration(**common_kwargs)  # type: ignore[arg-type]
+        if decl_type == DeclType.variable:
+            return VariableDeclaration(**common_kwargs)  # type: ignore[arg-type]
+        if decl_type == DeclType.equation:
+            return EquationDeclaration(**common_kwargs)  # type: ignore[arg-type]
+        if decl_type == DeclType.dimensions:
+            return DimensionsDeclaration(**common_kwargs)  # type: ignore[arg-type]
+        if decl_type == DeclType.domain:
+            return DomainDeclaration(**common_kwargs)  # type: ignore[arg-type]
+
+        raise AssertionError(f"Unhandled declaration type {decl_type}")
+
+    # ---------- top-level rule ----------
+
+    def start(self, meta: Any, items: List[DeclarationNode]) -> Program:
+        """
+        Top-level grammar rule: wrap all declarations into a Program.
+        No semantic checks here.
+        """
+        return Program(decls=items)
+
+
+# ---------- parser helpers for Pass 1 ----------
+
+def build_parser(grammar_file: Path) -> Lark:
+    """
+    Build a Lark parser from the given grammar file.
+    """
+    return Lark.open(grammar_file, parser="lalr")
+
+
+def parse_declarations(parser: Lark, text: str) -> Program:
+    """
+    Parse source text into a Program AST using the Pass 1 transformer.
+    """
+    tree: Tree = parser.parse(text)
+    program: Program = ToASTPass1().transform(tree)  # type: ignore[assignment]
+    return program
