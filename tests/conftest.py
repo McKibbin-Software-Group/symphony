@@ -10,6 +10,14 @@ def models_folder(data_folder: Path):
     return data_folder / "models"
 
 @pytest.fixture
-def model_file(models_folder: Path):
-    return models_folder / "model.sym"
+def members_file(models_folder: Path):
+    return models_folder / "members.sym"
+
+@pytest.fixture
+def categories_file(models_folder: Path):
+    return models_folder / "categories.sym"
+
+@pytest.fixture
+def dimensions_file(models_folder: Path):
+    return models_folder / "dimensions.sym"
 

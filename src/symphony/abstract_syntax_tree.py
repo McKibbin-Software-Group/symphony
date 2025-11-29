@@ -1,10 +1,10 @@
-# symphony_ast.py
-# Abstract Syntax Tree definitions and printers
 from __future__ import annotations
 
 from dataclasses import dataclass, is_dataclass, fields
 from enum import Enum
 from typing import Any, List, Optional, Tuple, Union
+
+# Abstract Syntax Tree definitions and printers
 
 # ========= Core AST node types =========
 
@@ -18,7 +18,7 @@ class SourcePosition:
     column: int
 
 
-class DeclType(str, Enum):
+class DeclarationType(str, Enum):
     """
     Top-level declaration types.
     """
@@ -40,25 +40,32 @@ Documentation = Tuple[str, SourcePosition] # The content and position of a docst
 # ("dimension reference", (name, SourcePosition)) -> reference to a dimension
 DimensionTerm = Tuple[str, Any]
 
+# Internal structure used for domain expressions:
+# ("dimension reference", (name, SourcePosition)) -> reference to a dimension
+DomainTerm = Tuple[str, Tuple[str, SourcePosition]]
+
 # ("dimension_expression", first_term, [(op, term), ...])
 DimensionExpression = Tuple[str, DimensionTerm, List[Tuple[str, DimensionTerm]]]
+
+# ("domain_expression", first_term, [(op, term), ...])
+DomainExpression = Tuple[str, DomainTerm, List[Tuple[str, DomainTerm]]]
 
 @dataclass(frozen=True)
 class Declaration:
     """
     Base class for all top-level declarations.
     """
-    decl_type: DeclType
-    type_pos: SourcePosition
+    decl_type: DeclarationType
+    type_position: SourcePosition
 
     name: str
-    name_pos: SourcePosition
+    name_position: SourcePosition
 
     label: str
-    label_pos: SourcePosition
+    label_position: SourcePosition
 
-    doc: Optional[str]
-    doc_pos: Optional[SourcePosition]
+    documentation: Optional[str]
+    documentation_position: Optional[SourcePosition]
 
 
 @dataclass(frozen=True)
@@ -96,21 +103,20 @@ class CategoryDeclaration(DimensionDeclaration):
     pass
 
 @dataclass(frozen=True)
-class DimensionsDeclaration(Declaration):
+class DomainDeclaration(Declaration):
+    """
+    Domain declaration (exact syntax driven by the grammar).
+    """
+    tuples: List[DomainTuple]
+
+@dataclass(frozen=True)
+class DimensionsDeclaration(DomainDeclaration):
     """
      "dimensions" NAME ":" label name_list doc?
 
     `dimensions` lists the name of each included dimension
     """
     dimensions: List[str]
-
-
-@dataclass(frozen=True)
-class DomainDeclaration(Declaration):
-    """
-    Domain declaration (exact syntax driven by the grammar).
-    """
-    tuples: List[DomainTuple]
 
 
 @dataclass(frozen=True)
@@ -160,7 +166,7 @@ class Program:
 # ========= AST text / summary printers =========
 
 def _is_position_like(field_name: str, value: Any) -> bool:
-    if field_name.endswith("_pos"):
+    if field_name.endswith("_position"):
         return True
     if is_dataclass(value):
         tname = type(value).__name__
@@ -254,7 +260,7 @@ def program_to_summary_text(program: Program, show_pos: bool = False) -> str:
         elif isinstance(decl, DimensionDeclaration):
             extras.append(f"members={decl.dimension_members}")
         if show_pos:
-            extras.append(f"@{decl.type_pos.line}:{decl.type_pos.column}")
+            extras.append(f"@{decl.type_position.line}:{decl.type_position.column}")
         if extras:
             base += "  (" + ", ".join(extras) + ")"
         lines.append(base)

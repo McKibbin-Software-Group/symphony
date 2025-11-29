@@ -18,10 +18,10 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from lark import Lark, Transformer, Token, Tree, v_args
 from lark.exceptions import UnexpectedCharacters, UnexpectedInput, UnexpectedToken
 
-from abstract_syntax_tree import (
+from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
     DeclarationNode,
-    DeclType,
+    DeclarationType,
     DimensionDeclaration,
     DimensionsDeclaration,
     DomainDeclaration,
@@ -230,16 +230,16 @@ class ToAST(Transformer):
 
     def _build_dimension(
         self,
-        type_tok: Token,
-        name_tok: Token,
+        type_token: Token,
+        name_token: Token,
         label_text: str,
-        label_pos: SourcePosition,
+        label_position: SourcePosition,
         expr: Optional[DimensionExpression],
         documentation: Optional[Documentation],
     ) -> DimensionDeclaration:
-        type_pos = self._position(type_tok)
-        name_pos = self._position(name_tok)
-        name_str = str(name_tok)
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
+        name_str = str(name_token)
 
         # Evaluate the expression (or empty -> [])
         members: List[str] = self._evaluate_dimension_expression(expr) if expr else []
@@ -260,14 +260,14 @@ class ToAST(Transformer):
             )
 
         node = DimensionDeclaration(
-            decl_type=DeclType.dimension,
-            type_pos=type_pos,
+            decl_type=DeclarationType.dimension,
+            type_position=type_position,
             name=name_str,
-            name_pos=name_pos,
+            name_position=name_position,
             label=label_text,
-            label_pos=label_pos,
-            doc=documentation[0] if documentation else None,
-            doc_pos=documentation[1] if documentation else None,
+            label_position=label_position,
+            documentation=documentation[0] if documentation else None,
+            documentation_position=documentation[1] if documentation else None,
             dimension_members=members,
         )
         # Register for future references
@@ -276,46 +276,46 @@ class ToAST(Transformer):
 
     def _build_category(
         self,
-        type_tok: Token,
-        name_tok: Token,
+        type_token: Token,
+        name_token: Token,
         label_text: str,
-        label_pos: SourcePosition,
+        label_position: SourcePosition,
         list_term: Optional[DimensionTerm],
         documentation: Optional[Documentation],
     ) -> CategoryDeclaration:
-        type_pos = self._position(type_tok)
-        name_pos = self._position(name_tok)
-        name_str = str(name_tok)
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
+        name_str = str(name_token)
 
         members: List[str] = []
         if list_term is not None:
             tag, payload = list_term
             assert tag == "list"
-            for tok in payload:  # payload is List[Token]
-                ref_name = str(tok)
-                if ref_name not in self._declared_members:
+            for token in payload:  # payload is List[Token]
+                reference_name = str(token)
+                if reference_name not in self._declared_members:
                     raise ValueError(
-                        f"Undefined member '{ref_name}' referenced by category '{name_str}' "
-                        f"at {tok.line}:{tok.column} — members must be declared earlier"
+                        f"Undefined member '{reference_name}' referenced by category '{name_str}' "
+                        f"at {token.line}:{token.column} — members must be declared earlier"
                     )
-                if ref_name in self._member_category:
-                    prev_cat = self._member_category[ref_name]
+                if reference_name in self._member_category:
+                    prev_cat = self._member_category[reference_name]
                     raise ValueError(
-                        f"Member '{ref_name}' is already in category '{prev_cat}' "
-                        f"and cannot also be in '{name_str}' (at {tok.line}:{tok.column})"
+                        f"Member '{reference_name}' is already in category '{prev_cat}' "
+                        f"and cannot also be in '{name_str}' (at {token.line}:{token.column})"
                     )
-                self._member_category[ref_name] = name_str
-                members.append(ref_name)
+                self._member_category[reference_name] = name_str
+                members.append(reference_name)
 
         node = CategoryDeclaration(
-            decl_type=DeclType.category,
-            type_pos=type_pos,
+            decl_type=DeclarationType.category,
+            type_position=type_position,
             name=name_str,
-            name_pos=name_pos,
+            name_position=name_position,
             label=label_text,
-            label_pos=label_pos,
-            doc=documentation[0] if documentation else None,
-            doc_pos=documentation[1] if documentation else None,
+            label_position=label_position,
+            documentation=documentation[0] if documentation else None,
+            documentation_position=documentation[1] if documentation else None,
             dimension_members=members,
         )
         self._declared_dimensions[name_str] = members
@@ -323,108 +323,108 @@ class ToAST(Transformer):
 
     def _build_other(
         self,
-        type_tok: Token,
-        name_tok: Token,
+        type_token: Token,
+        name_token: Token,
         label_text: str,
-        label_pos: SourcePosition,
-        doc_pair: Optional[Documentation],
+        label_position: SourcePosition,
+        documentation: Optional[Documentation],
     ) -> DeclarationNode:
-        type_text: str = str(type_tok)
+        type_text: str = str(type_token)
         if type_text != type_text.lower():
             raise ValueError(
                 f"Declaration type must be lower-case, found '{type_text}' "
-                f"at {type_tok.line}:{type_tok.column}"
+                f"at {type_token.line}:{type_token.column}"
             )
         # Map to DeclType
         try:
-            decl_type = DeclType(type_text)
+            declaration_type = DeclarationType(type_text)
         except ValueError as exc:
             raise ValueError(
-                f"Unknown declaration type '{type_text}' at {type_tok.line}:{type_tok.column}"
+                f"Unknown declaration type '{type_text}' at {type_token.line}:{type_token.column}"
             ) from exc
 
-        type_pos = self._position(type_tok)
-        name_pos = self._position(name_tok)
-        name_str = str(name_tok)
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
+        name_str = str(name_token)
 
-        if decl_type == DeclType.member:
+        if declaration_type == DeclarationType.member:
             if name_str in self._declared_members:
                 raise ValueError(
-                    f"Duplicate member declaration '{name_str}' at {name_pos.line}:{name_pos.column}"
+                    f"Duplicate member declaration '{name_str}' at {name_position.line}:{name_position.column}"
                 )
             self._declared_members.add(name_str)
             return MemberDeclaration(
-                decl_type=decl_type,
-                type_pos=type_pos,
+                decl_type=declaration_type,
+                type_position=type_position,
                 name=name_str,
-                name_pos=name_pos,
+                name_position=name_position,
                 label=label_text,
-                label_pos=label_pos,
-                doc=doc_pair[0] if doc_pair else None,
-                doc_pos=doc_pair[1] if doc_pair else None,
+                label_position=label_position,
+                documentation=documentation[0] if documentation else None,
+                documentation_position=documentation[1] if documentation else None,
             )
 
-        if decl_type == DeclType.dimensions:
+        if declaration_type == DeclarationType.dimensions:
             return DimensionsDeclaration(
-                decl_type=decl_type,
-                type_pos=type_pos,
+                decl_type=declaration_type,
+                type_position=type_position,
                 name=name_str,
-                name_pos=name_pos,
+                name_position=name_position,
                 label=label_text,
-                label_pos=label_pos,
-                doc=doc_pair[0] if doc_pair else None,
-                doc_pos=doc_pair[1] if doc_pair else None,
+                label_position=label_position,
+                documentation=documentation[0] if documentation else None,
+                documentation_position=documentation[1] if documentation else None,
             )
 
-        if decl_type == DeclType.domain:
+        if declaration_type == DeclarationType.domain:
             return DomainDeclaration(
-                decl_type=decl_type,
-                type_pos=type_pos,
+                decl_type=declaration_type,
+                type_position=type_position,
                 name=name_str,
-                name_pos=name_pos,
+                name_position=name_position,
                 label=label_text,
-                label_pos=label_pos,
-                doc=doc_pair[0] if doc_pair else None,
-                doc_pos=doc_pair[1] if doc_pair else None,
+                label_position=label_position,
+                documentation=documentation[0] if documentation else None,
+                documentation_position=documentation[1] if documentation else None,
             )
 
-        if decl_type == DeclType.parameter:
+        if declaration_type == DeclarationType.parameter:
             return ParameterDeclaration(
-                decl_type=decl_type,
-                type_pos=type_pos,
+                decl_type=declaration_type,
+                type_position=type_position,
                 name=name_str,
-                name_pos=name_pos,
+                name_position=name_position,
                 label=label_text,
-                label_pos=label_pos,
-                doc=doc_pair[0] if doc_pair else None,
-                doc_pos=doc_pair[1] if doc_pair else None,
+                label_position=label_position,
+                documentation=documentation[0] if documentation else None,
+                documentation_position=documentation[1] if documentation else None,
             )
 
-        if decl_type == DeclType.variable:
+        if declaration_type == DeclarationType.variable:
             return VariableDeclaration(
-                decl_type=decl_type,
-                type_pos=type_pos,
+                decl_type=declaration_type,
+                type_position=type_position,
                 name=name_str,
-                name_pos=name_pos,
+                name_position=name_position,
                 label=label_text,
-                label_pos=label_pos,
-                doc=doc_pair[0] if doc_pair else None,
-                doc_pos=doc_pair[1] if doc_pair else None,
+                label_position=label_position,
+                documentation=documentation[0] if documentation else None,
+                documentation_position=documentation[1] if documentation else None,
             )
 
-        if decl_type == DeclType.equation:
+        if declaration_type == DeclarationType.equation:
             return EquationDeclaration(
-                decl_type=decl_type,
-                type_pos=type_pos,
+                decl_type=declaration_type,
+                type_position=type_position,
                 name=name_str,
-                name_pos=name_pos,
+                name_position=name_position,
                 label=label_text,
-                label_pos=label_pos,
-                doc=doc_pair[0] if doc_pair else None,
-                doc_pos=doc_pair[1] if doc_pair else None,
+                label_position=label_position,
+                documentation=documentation[0] if documentation else None,
+                documentation_position=documentation[1] if documentation else None,
             )
 
-        raise AssertionError(f"Unhandled declaration type: {decl_type}")
+        raise AssertionError(f"Unhandled declaration type: {declaration_type}")
 
     # ---- dimension expression evaluation ----
 

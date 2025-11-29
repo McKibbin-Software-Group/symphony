@@ -46,10 +46,10 @@ intertemporal: "intertemporal" ["=" ("true"|"false")]
 label: ESCAPED_STRING
 doc: TRIPLE_STRING
 
-// Dimension member expressions
-dimension_expression: dimension_term (DIMENSION_OPERATOR dimension_term)*
+SET_OPERATOR: "+" | "-"
 
-DIMENSION_OPERATOR: "+" | "-"
+// Dimension member expressions
+dimension_expression: dimension_term (SET_OPERATOR dimension_term)*
 
 // A dimension_term is either a bracketed list of member names or 
 // a reference to a previously-declared dimension or category using its NAME.
@@ -60,7 +60,10 @@ dimension_term: name_list
 name_list: "[" [NAME ("," NAME)*] "]"
 
 // Domain expressions
-domain_expression: "to be completed"
+domain_expression: domain_term (SET_OPERATOR domain_term)*
+
+// A domain reference should be able to be a reference to either another domain or a "dimensions" declaration, noting that a dimensions implicitly defines a domain
+domain_term: NAME -> domain_reference
 
 // Equation expressions
 equation_expression: "to be completed"

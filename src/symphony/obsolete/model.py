@@ -1,4 +1,3 @@
-# symphony_model.py
 # TODO: Eventually to be replaced fully by a mult-pass processor.
 # # symbol tables and model object
 from __future__ import annotations
@@ -6,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Set
 
-from abstract_syntax_tree import (
+from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
     DeclarationNode,
     DimensionDeclaration,

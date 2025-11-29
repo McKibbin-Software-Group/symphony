@@ -1,7 +1,3 @@
-# Builds the Pass 1 parser and transformer for Symphony.
-# It loads the packaged grammar, parses the model declaration into a Lark parse tree,
-# and produces a raw abstract syntax tree without semantic validation; later passes
-# handle ordering and cross-reference checks and other semantic analysis.
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,12 +8,14 @@ from lark import Lark, Transformer, Token, Tree, v_args
 from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
     DeclarationNode,
-    DeclType,
+    DeclarationType,
     DimensionDeclaration,
     DimensionExpression,
     DimensionTerm,
     DimensionsDeclaration,
     DomainDeclaration,
+    DomainExpression,
+    DomainTerm,
     EquationDeclaration,
     MemberDeclaration,
     ParameterDeclaration,
@@ -26,12 +24,16 @@ from symphony.abstract_syntax_tree import (
     VariableDeclaration,
 )
 
+# Builds the Pass 1 parser and transformer for Symphony.
+# It loads the packaged grammar, parses the model declaration into a Lark parse tree,
+# and produces a raw abstract syntax tree without semantic validation; later passes
+# handle ordering and cross-reference checks and other semantic analysis.
+
 # The content + position of a docstring for an entity.
 Documentation = Tuple[str, SourcePosition]
 
-
 @v_args(meta=True)
-class ToASTPass1(Transformer):
+class ConvertToAbstractSyntaxTree(Transformer):
     """
     Pass 1: parse-tree → raw AST, with no semantic validation.
 
@@ -105,6 +107,37 @@ class ToASTPass1(Transformer):
 
     def dimension_term(self, meta: Any, items: List[Any]) -> DimensionTerm:
         # Forward the term built by name_list or dimension_reference
+        assert len(items) == 1
+        return items[0]
+
+
+    def domain_reference(self, meta: Any, items: List[Token]) -> DomainTerm:
+        assert len(items) == 1
+        tok = items[0]
+        name = tok.value
+        pos = self._position(tok)
+        return ("domain reference", (name, pos))
+
+    def domain_expression(self, meta: Any, items: List[Any]) -> DomainExpression:
+        """
+        Build a raw DomainExpression:
+            ("domain_expression", first_term, [(op, term), ...])
+        """
+        if not items:
+            empty: DomainTerm = ("list", [])
+            return ("domain_expression", empty, [])
+
+        first_term: DomainTerm = items[0]
+        rest: List[Tuple[str, DomainTerm]] = []
+        i = 1
+        while i < len(items):
+            op_token: Token = items[i]
+            term: DomainTerm = items[i + 1]
+            rest.append((op_token.value, term))
+            i += 2
+        return ("domain_expression", first_term, rest)
+
+    def domain_term(self, meta: Any, items: List[Any]) -> DomainTerm:
         assert len(items) == 1
         return items[0]
 
@@ -223,31 +256,31 @@ class ToASTPass1(Transformer):
         type_token: Token,
         name_token: Token,
         label_text: str,
-        label_pos: SourcePosition,
-        expr: Optional[DimensionExpression],
+        label_position: SourcePosition,
+        expression: Optional[DimensionExpression],
         documentation: Optional[Documentation],
     ) -> DimensionDeclaration:
         """
         Build a DimensionDeclaration without evaluating the expression.
         """
-        type_pos = self._position(type_token)
-        name_pos = self._position(name_token)
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
         name_str = name_token.value
 
         # Pass 1 leaves members empty; a later pass will fill them.
         empty_members: List[str] = []
 
         return DimensionDeclaration(
-            decl_type=DeclType.dimension,
-            type_pos=type_pos,
+            decl_type=DeclarationType.dimension,
+            type_position=type_position,
             name=name_str,
-            name_pos=name_pos,
+            name_position=name_position,
             label=label_text,
-            label_pos=label_pos,
-            doc=documentation[0] if documentation else None,
-            doc_pos=documentation[1] if documentation else None,
+            label_position=label_position,
+            documentation=documentation[0] if documentation else None,
+            documentation_position=documentation[1] if documentation else None,
             dimension_members=empty_members,
-            dimension_expression=expr,
+            dimension_expression=expression,
         )
 
     def _build_category(
@@ -255,7 +288,7 @@ class ToASTPass1(Transformer):
         type_token: Token,
         name_token: Token,
         label_text: str,
-        label_pos: SourcePosition,
+        label_position: SourcePosition,
         list_term: Optional[DimensionTerm],
         documentation: Optional[Documentation],
     ) -> CategoryDeclaration:
@@ -263,8 +296,8 @@ class ToASTPass1(Transformer):
         Build a CategoryDeclaration, preserving the member list syntactically.
         No category-membership validation happens here.
         """
-        type_pos = self._position(type_token)
-        name_pos = self._position(name_token)
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
         name_str = name_token.value
 
         members: List[str] = []
@@ -276,14 +309,14 @@ class ToASTPass1(Transformer):
             members = [tok.value for tok in tokens]
 
         return CategoryDeclaration(
-            decl_type=DeclType.category,
-            type_pos=type_pos,
+            decl_type=DeclarationType.category,
+            type_position=type_position,
             name=name_str,
-            name_pos=name_pos,
+            name_position=name_position,
             label=label_text,
-            label_pos=label_pos,
-            doc=documentation[0] if documentation else None,
-            doc_pos=documentation[1] if documentation else None,
+            label_position=label_position,
+            documentation=documentation[0] if documentation else None,
+            documentation_position=documentation[1] if documentation else None,
             dimension_members=members,
         )
 
@@ -292,8 +325,8 @@ class ToASTPass1(Transformer):
         type_token: Token,
         name_token: Token,
         label_text: str,
-        label_pos: SourcePosition,
-        doc_pair: Optional[Documentation],
+        label_position: SourcePosition,
+        documentation: Optional[Documentation],
     ) -> DeclarationNode:
         """
         Build all other declaration types that do not carry expressions in Pass 1.
@@ -306,41 +339,41 @@ class ToASTPass1(Transformer):
             )
 
         try:
-            decl_type = DeclType(type_text)
+            declaration_type = DeclarationType(type_text)
         except ValueError as exc:
             raise ValueError(
                 f"Unknown declaration type '{type_text}' at {type_token.line}:{type_token.column}"
             ) from exc
 
-        type_pos = self._position(type_token)
-        name_pos = self._position(name_token)
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
         name_str = name_token.value
 
-        common_kwargs = dict(
-            decl_type=decl_type,
-            type_pos=type_pos,
+        common_keyword_arguments = dict(
+            decl_type=declaration_type,
+            type_position=type_position,
             name=name_str,
-            name_pos=name_pos,
+            name_position=name_position,
             label=label_text,
-            label_pos=label_pos,
-            doc=doc_pair[0] if doc_pair else None,
-            doc_pos=doc_pair[1] if doc_pair else None,
+            label_position=label_position,
+            documentation=documentation[0] if documentation else None,
+            documentation_position=documentation[1] if documentation else None,
         )
 
-        if decl_type == DeclType.member:
-            return MemberDeclaration(**common_kwargs)  # type: ignore[arg-type]
-        if decl_type == DeclType.parameter:
-            return ParameterDeclaration(**common_kwargs)  # type: ignore[arg-type]
-        if decl_type == DeclType.variable:
-            return VariableDeclaration(**common_kwargs)  # type: ignore[arg-type]
-        if decl_type == DeclType.equation:
-            return EquationDeclaration(**common_kwargs)  # type: ignore[arg-type]
-        if decl_type == DeclType.dimensions:
-            return DimensionsDeclaration(**common_kwargs)  # type: ignore[arg-type]
-        if decl_type == DeclType.domain:
-            return DomainDeclaration(**common_kwargs)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.member:
+            return MemberDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.parameter:
+            return ParameterDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.variable:
+            return VariableDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.equation:
+            return EquationDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.dimensions:
+            return DimensionsDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.domain:
+            return DomainDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
 
-        raise AssertionError(f"Unhandled declaration type {decl_type}")
+        raise AssertionError(f"Unhandled declaration type {declaration_type}")
 
     # ---------- top-level rule ----------
 
@@ -352,7 +385,7 @@ class ToASTPass1(Transformer):
         return Program(decls=items)
 
 
-# ---------- parser helpers for Pass 1 ----------
+# ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------
 
 def build_parser(grammar_file: Path) -> Lark:
     """
@@ -366,5 +399,5 @@ def parse_declarations(parser: Lark, text: str) -> Program:
     Parse source text into a Program AST using the Pass 1 transformer.
     """
     tree: Tree = parser.parse(text)
-    program: Program = ToASTPass1().transform(tree)  # type: ignore[assignment]
+    program: Program = ConvertToAbstractSyntaxTree().transform(tree)  # type: ignore[assignment]
     return program
