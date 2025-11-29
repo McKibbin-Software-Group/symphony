@@ -45,7 +45,7 @@ class ModelBuilder:
     def build(self, program: Program) -> Model:
         symbols = SymbolTables()
 
-        for decl in program.decls:
+        for decl in program.declarations:
             self._visit_decl(decl, symbols)
 
         return Model(program=program, symbols=symbols)

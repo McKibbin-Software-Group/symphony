@@ -30,4 +30,4 @@ dimension rgb: "Red Green and Blue" red_green + blue_only
 
 dimension red_green_blue: "Red and green and blue via addition" [red] + blue_only + red_green
 
-// dimensions colours_regions: "All colours for all regions" [colours, regions] """All colours for all regions"""
+dimensions colours_regions: "All colours for all regions" [colours, regions] """All colours for all regions"""

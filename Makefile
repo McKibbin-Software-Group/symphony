@@ -23,6 +23,7 @@ tests:
 
 # Run a specific unit test by name.
 # e.g. make test test_processor_commandline_interface
+TEST = test_commandline_processing_of_dimensions
 test:
 	pytest -q tests -k "$(TEST)"
 

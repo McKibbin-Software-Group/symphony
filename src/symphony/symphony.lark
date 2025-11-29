@@ -12,29 +12,30 @@
 %ignore /#[^\n]*/
 %ignore /\/\/[^\n]*/
 
-// Triple-quoted doc string (non-greedy, spans lines)
+// Triple-quoted documentation string (non-greedy, spans lines)
 TRIPLE_STRING: /\"\"\"(.|\n|\r)*?\"\"\"/
 
 // ---------- Parser ----------
 
 start: declaration+
 
-declaration: member_decl
-           | category_decl
-           | dimension_decl
-           | dimensions_decl
-           | parameter_decl
-           | variable_decl
-           | equation_decl
+declaration: member_declaration
+           | category_declaration
+           | dimension_declaration
+           | dimensions_declaration
+           | domain_declaration
+           | parameter_declaration
+           | variable_declaration
+           | equation_declaration
 
-member_decl:     "member"     NAME ":" label doc?
-category_decl:   "category"   NAME ":" label name_list doc?
-dimension_decl:  "dimension"  NAME ":" label dimension_expression doc?
-dimensions_decl: "dimensions" NAME ":" label name_list doc?
-domain_decl:     "domain"     NAME ":" label domain_expression? doc?
-parameter_decl:  "parameter"  NAME ":" label units doc?
-variable_decl:   "variable"   NAME ":" label units deviation_units dimensions_decl logged? intertemporal? doc?
-equation_decl:   "equation"   NAME ":" label equation_expression doc?
+member_declaration:     "member"     NAME ":" label documentation?
+category_declaration:   "category"   NAME ":" label name_list documentation?
+dimension_declaration:  "dimension"  NAME ":" label dimension_expression documentation?
+dimensions_declaration: "dimensions" NAME ":" label name_list documentation?
+domain_declaration:     "domain"     NAME ":" label domain_expression? documentation?
+parameter_declaration:  "parameter"  NAME ":" label units documentation?
+variable_declaration:   "variable"   NAME ":" label units deviation_units domain_declaration? logged? intertemporal? documentation?
+equation_declaration:   "equation"   NAME ":" label equation_expression documentation?
 
 units: "units" "=" NAME
 deviation_units: "deviation_units" "=" NAME
@@ -44,7 +45,7 @@ logged: "logged" ["=" ("true"|"false")]
 intertemporal: "intertemporal" ["=" ("true"|"false")]
 
 label: ESCAPED_STRING
-doc: TRIPLE_STRING
+documentation: TRIPLE_STRING
 
 SET_OPERATOR: "+" | "-"
 

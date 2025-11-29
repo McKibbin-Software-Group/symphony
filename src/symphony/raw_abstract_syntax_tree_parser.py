@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -69,7 +70,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
         tok = items[0]
         return self._parse_escaped_string(tok), self._position(tok)
 
-    def doc(self, meta: Any, items: List[Token]) -> Documentation:
+    def documentation(self, meta: Any, items: List[Token]) -> Documentation:
         assert len(items) == 1
         tok = items[0]
         text = tok.value[3:-3]  # strip leading and trailing """ of TRIPLE_STRING
@@ -191,7 +192,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     # ---------- declaration rules ----------
 
-    def category_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def category_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # "category" NAME ":" label name_list doc?
         type_token = Token("TYPE", "category")
         name_token: Token = items[0]
@@ -201,7 +202,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
             type_token, name_token, label_text, label_pos, list_term, documentation
         )
 
-    def dimension_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def dimension_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # "dimension" NAME ":" label dimension_expression doc?
         type_token = Token("TYPE", "dimension")
         name_token: Token = items[0]
@@ -211,7 +212,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
             type_token, name_token, label_text, label_pos, expression, documentation
         )
 
-    def other_decl(self, kind: str, meta: Any, items: List[Any]) -> DeclarationNode:
+    def other_declaration(self, kind: str, meta: Any, items: List[Any]) -> DeclarationNode:
         """
         Helper for declarations with just NAME ":" label doc?.
         """
@@ -229,25 +230,33 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     # Rule-specific wrappers:
 
-    def member_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
-        return self.other_decl("member", meta, items)
+    def member_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_declaration("member", meta, items)
 
-    def parameter_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
-        return self.other_decl("parameter", meta, items)
+    def parameter_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_declaration("parameter", meta, items)
 
-    def variable_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
-        return self.other_decl("variable", meta, items)
+    def variable_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_declaration("variable", meta, items)
 
-    def equation_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
-        return self.other_decl("equation", meta, items)
+    def equation_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_declaration("equation", meta, items)
 
-    def dimensions_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
-        return self.other_decl("dimensions", meta, items)
+    def dimensions_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        type_token = Token("TYPE", "dimensions")
+        name_token: Token = items[0]
+        label_text, label_pos = items[1]
+        documentation, list_term = self._pick_doc_and_list(items[2:])
+        return self._build_dimensions(
+            type_token, name_token, label_text, label_pos, list_term, documentation
+        )
+    
 
-    def domain_decl(self, meta: Any, items: List[Any]) -> DeclarationNode:
+
+    def domain_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # Domain expressions are not yet implemented in the grammar
         # beyond a placeholder, so we treat this like a simple decl.
-        return self.other_decl("domain", meta, items)
+        return self.other_declaration("domain", meta, items)
 
     # ---------- builders ----------
 
@@ -271,7 +280,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
         empty_members: List[str] = []
 
         return DimensionDeclaration(
-            decl_type=DeclarationType.dimension,
+            declaration_type=DeclarationType.dimension,
             type_position=type_position,
             name=name_str,
             name_position=name_position,
@@ -281,6 +290,44 @@ class ConvertToAbstractSyntaxTree(Transformer):
             documentation_position=documentation[1] if documentation else None,
             dimension_members=empty_members,
             dimension_expression=expression,
+        )
+
+    def _build_dimensions(
+        self,
+        type_token: Token,
+        name_token: Token,
+        label_text: str,
+        label_position: SourcePosition,
+        list_term: Optional[DimensionTerm],
+        documentation: Optional[Documentation],
+    ) -> DimensionsDeclaration:
+        """
+        Build a DimensionsDeclaration, preserving the dimension list syntactically.
+        No dimensions-membership validation happens here.
+        """
+        type_position = self._position(type_token)
+        name_position = self._position(name_token)
+        name_str = name_token.value
+
+        dimensions: List[str] = []
+        if list_term is not None:
+            tag, payload = list_term
+            if tag != "list":
+                raise ValueError("Internal error: expected list term for dimensions.")
+            tokens: Iterable[Token] = payload
+            dimensions = [tok.value for tok in tokens]
+
+        return DimensionsDeclaration(
+            declaration_type=DeclarationType.dimensions,
+            type_position=type_position,
+            name=name_str,
+            name_position=name_position,
+            label=label_text,
+            label_position=label_position,
+            documentation=documentation[0] if documentation else None,
+            documentation_position=documentation[1] if documentation else None,
+            tuples=[],
+            dimensions=dimensions,
         )
 
     def _build_category(
@@ -309,7 +356,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
             members = [tok.value for tok in tokens]
 
         return CategoryDeclaration(
-            decl_type=DeclarationType.category,
+            declaration_type=DeclarationType.category,
             type_position=type_position,
             name=name_str,
             name_position=name_position,
@@ -350,7 +397,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
         name_str = name_token.value
 
         common_keyword_arguments = dict(
-            decl_type=declaration_type,
+            declaration_type=declaration_type,
             type_position=type_position,
             name=name_str,
             name_position=name_position,
@@ -382,7 +429,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
         """
-        return Program(decls=items)
+        return Program(declarations=items)
 
 
 # ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------

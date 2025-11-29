@@ -260,7 +260,7 @@ class ToAST(Transformer):
             )
 
         node = DimensionDeclaration(
-            decl_type=DeclarationType.dimension,
+            declaration_type=DeclarationType.dimension,
             type_position=type_position,
             name=name_str,
             name_position=name_position,
@@ -308,7 +308,7 @@ class ToAST(Transformer):
                 members.append(reference_name)
 
         node = CategoryDeclaration(
-            decl_type=DeclarationType.category,
+            declaration_type=DeclarationType.category,
             type_position=type_position,
             name=name_str,
             name_position=name_position,
@@ -354,7 +354,7 @@ class ToAST(Transformer):
                 )
             self._declared_members.add(name_str)
             return MemberDeclaration(
-                decl_type=declaration_type,
+                declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,
                 name_position=name_position,
@@ -366,7 +366,7 @@ class ToAST(Transformer):
 
         if declaration_type == DeclarationType.dimensions:
             return DimensionsDeclaration(
-                decl_type=declaration_type,
+                declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,
                 name_position=name_position,
@@ -378,7 +378,7 @@ class ToAST(Transformer):
 
         if declaration_type == DeclarationType.domain:
             return DomainDeclaration(
-                decl_type=declaration_type,
+                declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,
                 name_position=name_position,
@@ -390,7 +390,7 @@ class ToAST(Transformer):
 
         if declaration_type == DeclarationType.parameter:
             return ParameterDeclaration(
-                decl_type=declaration_type,
+                declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,
                 name_position=name_position,
@@ -402,7 +402,7 @@ class ToAST(Transformer):
 
         if declaration_type == DeclarationType.variable:
             return VariableDeclaration(
-                decl_type=declaration_type,
+                declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,
                 name_position=name_position,
@@ -414,7 +414,7 @@ class ToAST(Transformer):
 
         if declaration_type == DeclarationType.equation:
             return EquationDeclaration(
-                decl_type=declaration_type,
+                declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,
                 name_position=name_position,
@@ -506,7 +506,7 @@ class ToAST(Transformer):
                 "All members must be in a category, but the following member(s) are not assigned: "
                 + ", ".join(sorted(unassigned))
             )
-        return Program(decls=items)
+        return Program(declarations=items)
 
 
 # ========= Friendly error printing =========

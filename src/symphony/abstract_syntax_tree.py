@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, is_dataclass, fields
+from dataclasses import dataclass, field, is_dataclass, fields
 from enum import Enum
 from typing import Any, List, Optional, Tuple, Union
 
@@ -32,6 +32,7 @@ class DeclarationType(str, Enum):
     category = "category"
 
 DomainTuple = List[str] # The list of members in a domain tuple.
+DomainTuples = List[DomainTuple] # The list of tuples in a domain.
 
 Documentation = Tuple[str, SourcePosition] # The content and position of a docstring documentation for an entity.
 
@@ -55,7 +56,7 @@ class Declaration:
     """
     Base class for all top-level declarations.
     """
-    decl_type: DeclarationType
+    declaration_type: DeclarationType
     type_position: SourcePosition
 
     name: str
@@ -97,8 +98,6 @@ class DimensionDeclaration(Declaration):
 class CategoryDeclaration(DimensionDeclaration):
     """
     `category` NAME ":" label [name_list] doc?
-
-    `dimension_members` is the list of names of the members in this category (a type of dimension)
     """
     pass
 
@@ -107,7 +106,7 @@ class DomainDeclaration(Declaration):
     """
     Domain declaration (exact syntax driven by the grammar).
     """
-    tuples: List[DomainTuple]
+    tuples: DomainTuples = field(default_factory=list)
 
 @dataclass(frozen=True)
 class DimensionsDeclaration(DomainDeclaration):
@@ -116,7 +115,7 @@ class DimensionsDeclaration(DomainDeclaration):
 
     `dimensions` lists the name of each included dimension
     """
-    dimensions: List[str]
+    dimensions: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -125,7 +124,6 @@ class ParameterDeclaration(Declaration):
     Parameter declaration.
     """
     pass
-
 
 @dataclass(frozen=True)
 class VariableDeclaration(Declaration):
@@ -160,7 +158,7 @@ class Program:
     """
     Root node: a flat list of declarations.
     """
-    decls: List[DeclarationNode]
+    declarations: List[DeclarationNode]
 
 
 # ========= AST text / summary printers =========
@@ -249,19 +247,33 @@ def abstract_syntax_tree_to_text(root: Any, show_pos: bool = False) -> str:
 
 def program_to_summary_text(program: Program, show_pos: bool = False) -> str:
     """
-    Concise, one-line-per-declaration summary of a Program.
+    Concise, one-line-per-declaration summary of a model declaration.
+
+    ### Arguments
+
+    - `program`: The root abstract syntax tree node for the model declaration.
+    - `show_pos`: If `True`, include source position information for each declaration.
+
+    ### Returns
+
+    A multi-line string summarizing each declaration.
     """
     lines: List[str] = []
-    for decl in program.decls:
-        base = f"{decl.decl_type.value} {decl.name!r}: {decl.label!r}"
+    for declaration in program.declarations:
+        base = f"{declaration.declaration_type.value} {declaration.name!r}: {declaration.label!r}"
         extras: List[str] = []
-        if isinstance(decl, CategoryDeclaration):
-            extras.append(f"members={decl.dimension_members}")
-        elif isinstance(decl, DimensionDeclaration):
-            extras.append(f"members={decl.dimension_members}")
+        if isinstance(declaration, CategoryDeclaration):
+            extras.append(f"members={declaration.dimension_members}")
+        elif isinstance(declaration, DimensionDeclaration):
+            extras.append(f"members={declaration.dimension_members}")
         if show_pos:
-            extras.append(f"@{decl.type_position.line}:{decl.type_position.column}")
+            extras.append(f"@{declaration.type_position.line}:{declaration.type_position.column}")
         if extras:
             base += "  (" + ", ".join(extras) + ")"
+        if declaration.documentation:
+            doc_preview = declaration.documentation
+            if len(doc_preview) > 30:
+                doc_preview = doc_preview[:27] + "..."
+            base += f"  // doc={doc_preview!r}"
         lines.append(base)
     return "\n".join(lines)
