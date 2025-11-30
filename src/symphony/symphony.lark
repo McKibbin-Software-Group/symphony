@@ -5,6 +5,7 @@
 %import common.WS_INLINE
 %import common.NEWLINE
 %import common.INT -> TUPLE_POSITION
+%import common.NUMBER -> NUMBER
 
 %ignore WS_INLINE
 %ignore NEWLINE
@@ -94,5 +95,65 @@ domain_term: LEFT_ROUND_BRACKET domain_list tuple_conditions? RIGHT_ROUND_BRACKE
 tuple_condition: TUPLE_POSITION (EQUALS|NOT_EQUALS) TUPLE_POSITION
 tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
 
-// Equation expressions
-equation_expression: "to be completed"
+// ---------------------------------------------------------
+// Equation Expression Grammar
+// ---------------------------------------------------------
+
+// Top-level equation: LHS = RHS
+equation_expression: equality_expression
+
+lhs_variable_reference: NAME
+rhs_variable_reference: NAME
+
+equality_expression: lhs_variable_reference EQUALS sum_expression
+
+// Addition and subtraction
+sum_expression: product_expression
+        | sum_expression PLUS product_expression
+        | sum_expression MINUS product_expression
+
+// Multiplication and division
+product_expression: power_expression
+            | product_expression "*" power_expression
+            | product_expression "/" power_expression
+
+// Exponentiation (right associative)
+power_expression: unary_expression
+          | unary_expression "^" power_expression
+          | unary_expression "**" power_expression
+
+// Unary operators
+unary_expression: atom
+          | PLUS unary_expression
+          | MINUS unary_expression
+
+// ---------------------------------------------------------
+// Atomic expressions: constants, names, functions, brackets
+// ---------------------------------------------------------
+atom: NUMBER
+    | rhs_variable_reference
+    | function
+    | expectation
+    | sum
+    | product
+    | LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
+
+// ---------------------------------------------------------
+// Function calls
+// ---------------------------------------------------------
+
+FUNCTION_NAME: "log" | "exp" | "lead" | "lag"
+function: FUNCTION_NAME LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
+
+// Expectations E(expr) - used to identify expectations in period t of values in future periods.
+expectation: "E" LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
+
+// ---------------------------------------------------------
+// Summation and Product across domain members
+// 
+// sum(dimension, tuple_position, expr) 
+// prod(dimension, tuple_position, expr)
+// ---------------------------------------------------------
+dimension_reference: NAME
+sum: "sum" LEFT_ROUND_BRACKET dimension_reference "," TUPLE_POSITION "," equation_expression RIGHT_ROUND_BRACKET
+product: "prod" LEFT_ROUND_BRACKET dimension_reference "," TUPLE_POSITION "," equation_expression RIGHT_ROUND_BRACKET
