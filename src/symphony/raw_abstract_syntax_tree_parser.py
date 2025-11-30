@@ -22,6 +22,7 @@ from symphony.abstract_syntax_tree import (
     ParameterDeclaration,
     Model,
     SourcePosition,
+    UnitDeclaration,
     VariableDeclaration,
 )
 
@@ -240,6 +241,9 @@ class ConvertToAbstractSyntaxTree(Transformer):
     def parameter_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         return self.other_declaration("parameter", meta, items)
 
+    def unit_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+        return self.other_declaration("unit", meta, items)
+
     def variable_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         return self.other_declaration("variable", meta, items)
 
@@ -411,6 +415,8 @@ class ConvertToAbstractSyntaxTree(Transformer):
             return MemberDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
         if declaration_type == DeclarationType.parameter:
             return ParameterDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+        if declaration_type == DeclarationType.unit:
+            return UnitDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
         if declaration_type == DeclarationType.variable:
             return VariableDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
         if declaration_type == DeclarationType.equation:

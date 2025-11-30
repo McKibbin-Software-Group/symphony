@@ -42,14 +42,16 @@ declaration: member_declaration
            | parameter_declaration
            | variable_declaration
            | equation_declaration
+           | unit_declaration
 
 member_declaration:     "member"     NAME ":" label documentation?
 category_declaration:   "category"   NAME ":" label member_list documentation?
 dimension_declaration:  "dimension"  NAME ":" label dimension_expression documentation?
 domain_declaration:     "domain"     NAME ":" label domain_expression? documentation?
-parameter_declaration:  "parameter"  NAME ":" label units domain_expression? documentation?
-variable_declaration:   "variable"   NAME ":" label units deviation_units domain_expression? logged? intertemporal? documentation?
-equation_declaration:   "equation"   NAME ":" label domain_expression? equation_expression documentation?
+parameter_declaration:  "parameter"  NAME ":" label domain? unit  documentation?
+variable_declaration:   "variable"   NAME ":" label domain? unit deviation_unit logged? intertemporal? documentation?
+equation_declaration:   "equation"   NAME ":" label domain? equation_expression documentation?
+unit_declaration:       "unit"       NAME ":" label documentation?
 
 label: ESCAPED_STRING
 
@@ -62,12 +64,15 @@ domain_list: name_list
 
 member_list: LEFT_SQUARE_BRACKET name_list RIGHT_SQUARE_BRACKET
 
-units: "units" EQUALS NAME
-deviation_units: "deviation_units" EQUALS NAME
+domain: "domain" EQUALS domain_expression?
 
-logged: "logged" [EQUALS (TRUE | FALSE)]
+unit_reference: NAME
+unit: "unit" EQUALS unit_reference
+deviation_unit: "deviation_unit" EQUALS unit_reference
 
-intertemporal: "intertemporal" [EQUALS (TRUE | FALSE)]
+logged: "logged" EQUALS (TRUE | FALSE)
+
+intertemporal: "intertemporal" EQUALS (TRUE | FALSE)
 
 SET_OPERATOR: PLUS | MINUS
 
@@ -155,5 +160,7 @@ expectation: "E" LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
 // prod(dimension, tuple_position, expr)
 // ---------------------------------------------------------
 dimension_reference: NAME
+
 sum: "sum" LEFT_ROUND_BRACKET dimension_reference "," TUPLE_POSITION "," equation_expression RIGHT_ROUND_BRACKET
+
 product: "prod" LEFT_ROUND_BRACKET dimension_reference "," TUPLE_POSITION "," equation_expression RIGHT_ROUND_BRACKET

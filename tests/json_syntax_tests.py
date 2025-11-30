@@ -22,3 +22,11 @@ def test_dimensions_json(dimensions_parse_tree: Tree, results_folder: Path):
 def test_domains_json(domains_parse_tree: Tree, results_folder: Path):
     with open(results_folder / "domains_parse_tree.json", "w") as f:
         json.dump(JSONTransformer().transform(domains_parse_tree), f, indent=2)
+
+def test_variables_json(variables_parse_tree: Tree, results_folder: Path):
+    with open(results_folder / "variables_parse_tree.json", "w") as f:
+        json.dump(JSONTransformer().transform(variables_parse_tree), f, indent=2)
+
+def test_equations_json(equations_parse_tree: Tree, results_folder: Path):
+    with open(results_folder / "equations_parse_tree.json", "w") as f:
+        json.dump(JSONTransformer().transform(equations_parse_tree), f, indent=2)

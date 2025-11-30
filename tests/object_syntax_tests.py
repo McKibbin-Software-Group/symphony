@@ -29,3 +29,14 @@ def test_domains_syntax(domains_model: Model, results_folder: Path):
     with open(results_folder / "domains_objects.json", "w") as f:
         json.dump(convert_tree_to_jsonable(domains_model), f, indent=2)
 
+def test_variables_syntax(variables_model: Model, results_folder: Path):
+    assert variables_model is not None
+    logging.info(f"Parser results:\n{program_to_summary_text(variables_model, show_position=False)}")
+    with open(results_folder / "variables_objects.json", "w") as f:
+        json.dump(convert_tree_to_jsonable(variables_model), f, indent=2)
+
+def test_equations_syntax(equations_model: Model, results_folder: Path):
+    assert equations_model is not None
+    logging.info(f"Parser results:\n{program_to_summary_text(equations_model, show_position=False)}")
+    with open(results_folder / "equations_objects.json", "w") as f:
+        json.dump(convert_tree_to_jsonable(equations_model), f, indent=2)

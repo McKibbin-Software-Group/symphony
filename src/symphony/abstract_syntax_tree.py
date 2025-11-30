@@ -23,6 +23,7 @@ class DeclarationType(str, Enum):
     Top-level declaration types.
     """
     member = "member"
+    unit = "unit"
     dimension = "dimension"
     dimensions = "dimensions"
     domain = "domain"
@@ -73,6 +74,14 @@ class Declaration:
 class MemberDeclaration(Declaration):
     """
     `member` NAME ":" label doc?
+    """
+    pass
+
+
+@dataclass(frozen=True)
+class UnitDeclaration(Declaration):
+    """
+    Unit declaration.
     """
     pass
 
@@ -150,6 +159,7 @@ DeclarationNode = Union[
     ParameterDeclaration,
     VariableDeclaration,
     EquationDeclaration,
+    UnitDeclaration,
 ]
 
 

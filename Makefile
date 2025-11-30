@@ -24,7 +24,7 @@ tests:
 
 # Run a specific unit test by name.
 # e.g. make test test_processor_commandline_interface
-TEST = test_members_syntax
+TEST ?= test_members_syntax
 #TEST = test_categories_syntax
 #TEST = test_dimensions_syntax
 #TEST = test_domains_syntax
@@ -46,6 +46,14 @@ dimensions:
 domains:
 	pytest -q tests -k "test_domains_json" ; \
 	pytest -q tests -k "test_domains_syntax"
+
+variables:
+	pytest -q tests -k "test_variables_json"  \
+	pytest -q tests -k "test_variables_syntax"
+
+equations:
+	pytest -q tests -k "test_equations_json"  \
+	pytest -q tests -k "test_equations_syntax"
 
 listtests:
 	py.test tests -q --collect-only	
@@ -92,4 +100,4 @@ push:
 	echo "Done"
 
 # List the targets that are not related to specific file timestamps
-.PHONY: push sym run format whl pyc build doco tests test test-one listtests init
+.PHONY: push sym run format whl pyc build doco tests test test-one listtests init members categories dimensions domains variables
