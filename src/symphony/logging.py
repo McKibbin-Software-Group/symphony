@@ -70,6 +70,15 @@ def convert_tree_to_jsonable(node) -> Any:
     ### Returns
     A JSON-serializable representation of the AST node.
     """
+    if isinstance(node, Tree):
+        return {"tree": node.data, "children": convert_tree_to_jsonable(node.children)}
+    if isinstance(node, Token):
+        return {
+            "token": node.type,
+            "value": node.value,
+            "line": getattr(node, "line", None),
+            "column": getattr(node, "column", None),
+        }
     if is_dataclass(node):
         return {f.name: convert_tree_to_jsonable(getattr(node, f.name)) for f in fields(node)}
     if isinstance(node, Enum):

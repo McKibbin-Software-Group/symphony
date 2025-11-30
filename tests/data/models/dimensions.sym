@@ -14,8 +14,6 @@ category regions: "All regions of the World" [
     ROW
 ]
 
-dimension colour: "Available colours" [red, green, blue] """All the available colours defined as an explicit dimension"""
-
 dimension fixed: "Just Red and Green" [red, green]
 
 dimension red_green: "Red and Green by subtracting Blue from All Colours" colours - [blue]
