@@ -32,15 +32,18 @@ test:
 	pytest -q tests -k "$(TEST)"
 
 members:
-	pytest -q tests -k "test_members_syntax"
+	pytest -q tests -k "test_members_json" ; 
 
 categories:
+	pytest -q tests -k "test_categories_json" ; \
 	pytest -q tests -k "test_categories_syntax"
 
 dimensions:
+	pytest -q tests -k "test_dimensions_json" ; \
 	pytest -q tests -k "test_dimensions_syntax"
 
 domains:
+	pytest -q tests -k "test_domains_json" ; \
 	pytest -q tests -k "test_domains_syntax"
 
 listtests:

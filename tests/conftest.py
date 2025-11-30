@@ -1,5 +1,5 @@
 import logging
-from lark import Lark, UnexpectedInput
+from lark import Lark, Tree, UnexpectedInput
 import pytest
 from pathlib import Path
 from importlib import resources
@@ -63,19 +63,34 @@ def declaration(model_file:Path) -> str:
         assert False, f"Failed to read input file {model_file}: {exception}\n"
 
 def model(parser: Lark, model_file: Path) -> Model:
-
     try:
-        model_declaration: str = model_file.read_text(encoding="utf-8")
-    except OSError as exception:
-        assert False, f"Failed to read input file {model_file}: {exception}\n"
-
-    try:
-        model: Model = parse_declarations(parser, declaration(model_file))
+        return parse_declarations(parser, declaration(model_file))
     except UnexpectedInput as err:
         print_parse_error(err, declaration(model_file), model_file)
         assert False, f"Failed to parse model from {model_file}\n"
 
-    return model
+def parse_tree(parser: Lark, model_file: Path):
+    try:
+        return parser.parse(declaration(model_file))
+    except UnexpectedInput as err:
+        assert False, f"Failed to parse model from {model_file}\n"
+
+@pytest.fixture
+def members_parse_tree(parser: Lark, members_file: Path) -> Tree:
+    return parse_tree(parser, members_file)
+
+@pytest.fixture
+def categories_parse_tree(parser: Lark, categories_file: Path) -> Tree:
+    return parse_tree(parser, categories_file)
+
+@pytest.fixture
+def dimensions_parse_tree(parser: Lark, dimensions_file: Path) -> Tree:
+    return parse_tree(parser, dimensions_file)
+
+@pytest.fixture
+def domains_parse_tree(parser: Lark, domains_file: Path) -> Tree:
+    return parse_tree(parser, domains_file)
+
 
 @pytest.fixture
 def members_model(parser: Lark, members_file: Path) -> Model:

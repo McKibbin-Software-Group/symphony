@@ -20,4 +20,4 @@ dimension destinations: "Destination regions" regions
 
 domain product_of_colours_and_regions: "All colours for all regions" (colours, regions) """All colours for all regions"""
 
-domain bilateral_trade: "Bilateral trade flows" (origins, destinations) """Bilateral trade flows"""
+domain bilateral_trade: "Bilateral trade flows" (origins, destinations | 1 != 2) """Bilateral trade flows"""
