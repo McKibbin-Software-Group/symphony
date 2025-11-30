@@ -1,8 +1,10 @@
-member red: "Red colour"
-member green: "Green colour"
-member blue: "Blue colour"
+member energy: "energy"
+member mining: "mining"
+member agriculture: "agriculture"
+member durable_manufacturing: "durable manufacturing"
+member nondurable_manufacturing: "nondurable manufacturing"
 
-category colours: "All colours" [red, green, blue] """All the available colours"""
+category sectors: "All sectors" [energy, mining, agriculture, durable_manufacturing, nondurable_manufacturing, services] """All sectors"""
 
 member USA: "USA"
 member AUS: "Australia"
@@ -21,3 +23,5 @@ dimension destinations: "Destination regions" regions
 domain product_of_colours_and_regions: "All colours for all regions" (colours, regions) """All colours for all regions"""
 
 domain bilateral_trade: "Bilateral trade flows" (origins, destinations | 1 != 2) """Bilateral trade flows"""
+
+domain bilateral_trade_by_sector: "Bilateral trade flows by sector" (sectors, origins, destinations | 2 != 3) """Bilateral trade flows by sector"""

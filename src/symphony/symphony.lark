@@ -22,7 +22,13 @@ RIGHT_SQUARE_BRACKET: "]"
 LEFT_ROUND_BRACKET: "("
 RIGHT_ROUND_BRACKET: ")"
 CONDITIONAL: "|"
+EQUALS: "="
+NOT_EQUALS: "!="
+PLUS: "+"
+MINUS: "-"
 
+TRUE: "True" | "true"
+FALSE: "False" | "false"
 
 // ---------- Parser ----------
 
@@ -42,7 +48,7 @@ dimension_declaration:  "dimension"  NAME ":" label dimension_expression documen
 domain_declaration:     "domain"     NAME ":" label domain_expression? documentation?
 parameter_declaration:  "parameter"  NAME ":" label units domain_expression? documentation?
 variable_declaration:   "variable"   NAME ":" label units deviation_units domain_expression? logged? intertemporal? documentation?
-equation_declaration:   "equation"   NAME ":" label equation_expression documentation?
+equation_declaration:   "equation"   NAME ":" label domain_expression? equation_expression documentation?
 
 label: ESCAPED_STRING
 
@@ -50,18 +56,19 @@ documentation: TRIPLE_STRING
 
 name_list: NAME ("," NAME)*
 
-dimension_list: name_list
+# Domain list is a list of domains and/or dimension names.
+domain_list: name_list
 
 member_list: LEFT_SQUARE_BRACKET name_list RIGHT_SQUARE_BRACKET
 
-units: "units" "=" NAME
-deviation_units: "deviation_units" "=" NAME
+units: "units" EQUALS NAME
+deviation_units: "deviation_units" EQUALS NAME
 
-logged: "logged" ["=" ("true"|"false")]
+logged: "logged" [EQUALS (TRUE | FALSE)]
 
-intertemporal: "intertemporal" ["=" ("true"|"false")]
+intertemporal: "intertemporal" [EQUALS (TRUE | FALSE)]
 
-SET_OPERATOR: "+" | "-"
+SET_OPERATOR: PLUS | MINUS
 
 // Dimension member expressions
 dimension_expression: dimension_term (SET_OPERATOR dimension_term)*
@@ -81,10 +88,10 @@ dimension_function_conditions:
 // Note that a dimension can be specified by name or as a list of members.
 // list of dimensions reference should be able to be a reference to either another domain or a "dimensions" declaration, noting that a dimensions implicitly defines a domain
 domain_expression: domain_term (SET_OPERATOR domain_term)*
-domain_term: LEFT_ROUND_BRACKET dimension_list tuple_conditions? RIGHT_ROUND_BRACKET -> domain_function
+domain_term: LEFT_ROUND_BRACKET domain_list tuple_conditions? RIGHT_ROUND_BRACKET -> domain_function
         | NAME -> domain_reference
 
-tuple_condition: TUPLE_POSITION "=" TUPLE_POSITION | TUPLE_POSITION "!=" TUPLE_POSITION
+tuple_condition: TUPLE_POSITION (EQUALS|NOT_EQUALS) TUPLE_POSITION
 tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
 
 // Equation expressions

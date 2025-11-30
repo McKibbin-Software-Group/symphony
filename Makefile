@@ -32,7 +32,8 @@ test:
 	pytest -q tests -k "$(TEST)"
 
 members:
-	pytest -q tests -k "test_members_json" ; 
+	pytest -q tests -k "test_members_json" ;  \
+	pytest -q tests -k "test_members_syntax"
 
 categories:
 	pytest -q tests -k "test_categories_json" ; \

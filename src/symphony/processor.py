@@ -18,6 +18,15 @@ from symphony.raw_abstract_syntax_tree_parser import build_parser, parse_declara
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """
+    ### Overview
+    
+    Parse command line arguments.
+
+    ### Arguments
+
+    - `argv: Optional[List[str]]`: List of command line arguments. If `None`, uses `sys.argv`.
+    """
     parser = argparse.ArgumentParser(
         description="Parse Symphony declarations using the built-in grammar and print the Pass 1 AST.",
     )
@@ -46,6 +55,16 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """
+    
+    ### Overview
+    
+    Main entry point for the Symphony processor command line interface.
+    
+    ### Arguments
+    
+    - `argv: Optional[List[str]]`: List of command line arguments. If `None`, uses `sys.argv`.
+    """
     args = _parse_args(argv)
 
     configure_logging(args.log_level)
