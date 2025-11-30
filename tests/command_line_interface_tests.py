@@ -42,3 +42,6 @@ def test_commandline_processing_of_categories(categories_file: Path, capsys: Cap
 
 def test_commandline_processing_of_dimensions(dimensions_file: Path, capsys: CaptureFixture):
     commandline_processing_of_members(file=dimensions_file, capsys=capsys)
+
+def test_commandline_processing_of_domains(domains_file: Path, capsys: CaptureFixture):
+    commandline_processing_of_members(file=domains_file, capsys=capsys)

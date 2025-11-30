@@ -10,7 +10,7 @@ from symphony.abstract_syntax_tree import (
     DeclarationNode,
     DimensionDeclaration,
     MemberDeclaration,
-    Program,
+    Model,
 )
 
 
@@ -33,7 +33,7 @@ class Model:
     """
     Higher-level representation of the .sym model for downstream consumers.
     """
-    program: Program
+    program: Model
     symbols: SymbolTables
 
 
@@ -42,7 +42,7 @@ class ModelBuilder:
     Build a Model (AST + symbol tables) from a Program AST.
     """
 
-    def build(self, program: Program) -> Model:
+    def build(self, program: Model) -> Model:
         symbols = SymbolTables()
 
         for decl in program.declarations:

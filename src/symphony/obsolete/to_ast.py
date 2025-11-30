@@ -28,7 +28,7 @@ from symphony.abstract_syntax_tree import (
     EquationDeclaration,
     MemberDeclaration,
     ParameterDeclaration,
-    Program,
+    Model,
     SourcePosition,
     VariableDeclaration,
     abstract_syntax_tree_to_text,
@@ -498,7 +498,7 @@ class ToAST(Transformer):
 
     # ---- top-level rule ----
 
-    def start(self, meta: Any, items: List[DeclarationNode]) -> Program:
+    def start(self, meta: Any, items: List[DeclarationNode]) -> Model:
         # Final constraint: all declared members must be assigned to a category
         unassigned = [m for m in self._declared_members if m not in self._member_category]
         if unassigned:
@@ -506,7 +506,7 @@ class ToAST(Transformer):
                 "All members must be in a category, but the following member(s) are not assigned: "
                 + ", ".join(sorted(unassigned))
             )
-        return Program(declarations=items)
+        return Model(declarations=items)
 
 
 # ========= Friendly error printing =========
@@ -560,7 +560,7 @@ def build_parser(grammar_file: pathlib.Path) -> Lark:
     return Lark.open(grammar_file, parser="lalr")
 
 
-def parse_decls(parser: Lark, text: str) -> Program:
+def parse_decls(parser: Lark, text: str) -> Model:
     """
     Parse the given source text into a Program AST.
     """
@@ -607,9 +607,9 @@ def main() -> int:
         return 1
 
     if args.format == "tree":
-        output: str = abstract_syntax_tree_to_text(program, show_pos=args.show_pos)
+        output: str = abstract_syntax_tree_to_text(program, show_position=args.show_pos)
     else:
-        output = program_to_summary_text(program, show_pos=args.show_pos)
+        output = program_to_summary_text(program, show_position=args.show_pos)
 
     print(output)
     return 0

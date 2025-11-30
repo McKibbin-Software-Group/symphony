@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import fields, is_dataclass
+from enum import Enum
 import logging
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
+import json
+from lark import Lark, Tree, Token
 from lark import UnexpectedInput
-
 
 def configure_logging(level: str = "DEBUG") -> None:
     """
@@ -54,3 +57,25 @@ def print_parse_error(err: UnexpectedInput, src: str, file_path: Path) -> None:
     except Exception:
         # Fall back to simpler reporting if anything goes wrong.
         logging.error("%s: parse error at line %s, column %s", file_path, line, column)
+
+
+def convert_tree_to_jsonable(node) -> Any:
+    """
+    Convert the Abstract Syntax Tree produced by the parser into a JSON-serializable structure.
+
+    ### Arguments
+
+    - `node`: The AST node to convert.
+
+    ### Returns
+    A JSON-serializable representation of the AST node.
+    """
+    if is_dataclass(node):
+        return {f.name: convert_tree_to_jsonable(getattr(node, f.name)) for f in fields(node)}
+    if isinstance(node, Enum):
+        return node.value
+    if isinstance(node, list):
+        return [convert_tree_to_jsonable(x) for x in node]
+    if isinstance(node, tuple):
+        return [convert_tree_to_jsonable(x) for x in node]
+    return node

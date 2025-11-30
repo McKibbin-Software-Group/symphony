@@ -154,7 +154,7 @@ DeclarationNode = Union[
 
 
 @dataclass(frozen=True)
-class Program:
+class Model:
     """
     Root node: a flat list of declarations.
     """
@@ -225,11 +225,11 @@ def _dataclass_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, 
     return (label, children)
 
 
-def abstract_syntax_tree_to_text(root: Any, show_pos: bool = False) -> str:
+def abstract_syntax_tree_to_text(root: Any, show_position: bool = False) -> str:
     """
     Pretty ASCII tree representation of the AST.
     """
-    root_label, root_children = _dataclass_to_tree(root, show_pos)
+    root_label, root_children = _dataclass_to_tree(root, show_position)
 
     def walk(label: str, kids: List[Tuple[str, List[Tuple[str, list]]]], indent: str = "") -> List[str]:
         lines: List[str] = [f"{indent}{label}"]
@@ -245,7 +245,7 @@ def abstract_syntax_tree_to_text(root: Any, show_pos: bool = False) -> str:
     return "\n".join(walk(root_label, root_children))
 
 
-def program_to_summary_text(program: Program, show_pos: bool = False) -> str:
+def program_to_summary_text(program: Model, show_position: bool = False) -> str:
     """
     Concise, one-line-per-declaration summary of a model declaration.
 
@@ -266,7 +266,7 @@ def program_to_summary_text(program: Program, show_pos: bool = False) -> str:
             extras.append(f"members={declaration.dimension_members}")
         elif isinstance(declaration, DimensionDeclaration):
             extras.append(f"members={declaration.dimension_members}")
-        if show_pos:
+        if show_position:
             extras.append(f"@{declaration.type_position.line}:{declaration.type_position.column}")
         if extras:
             base += "  (" + ", ".join(extras) + ")"

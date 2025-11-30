@@ -29,3 +29,5 @@ dimension blue_only: "Blue only" [blue]
 dimension rgb: "Red Green and Blue" red_green + blue_only
 
 dimension red_green_blue: "Red and green and blue via addition" [red] + blue_only + red_green
+
+domain product_of_colours_and_regions: "All colours for all regions" product([colours, regions) """All colours for all regions"""

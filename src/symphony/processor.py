@@ -9,7 +9,7 @@ from typing import List, Optional
 from lark import UnexpectedInput
 
 from symphony.abstract_syntax_tree import (
-    Program,
+    Model,
     abstract_syntax_tree_to_text,
     program_to_summary_text,
 )
@@ -66,15 +66,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     try:
-        program: Program = parse_declarations(parser, text)
+        program: Model = parse_declarations(parser, text)
     except UnexpectedInput as err:
         print_parse_error(err, text, args.input)
         return 1
 
     if args.format == "tree":
-        output = abstract_syntax_tree_to_text(program, show_pos=args.show_pos)
+        output = abstract_syntax_tree_to_text(program, show_position=args.show_pos)
     else:
-        output = program_to_summary_text(program, show_pos=args.show_pos)
+        output = program_to_summary_text(program, show_position=args.show_pos)
 
     print(output)
     return 0

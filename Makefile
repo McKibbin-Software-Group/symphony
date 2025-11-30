@@ -1,9 +1,10 @@
 # (default target) Run the chosen target by default
 default: run
 
+MODEL = "domains.sym"
 run:
 	@echo "Running tests/models/model.sym with processor.py ..." ; \
-	python src/symphony/processor.py tests/data/models/model.sym; 
+	python src/symphony/processor.py tests/data/models/${MODEL}; 
 
 # Generate html and sym files on MacOS for the model using the sym processor
 # Custom SYM processor variable definitions
@@ -23,9 +24,24 @@ tests:
 
 # Run a specific unit test by name.
 # e.g. make test test_processor_commandline_interface
-TEST = test_commandline_processing_of_dimensions
+TEST = test_members_syntax
+#TEST = test_categories_syntax
+#TEST = test_dimensions_syntax
+#TEST = test_domains_syntax
 test:
 	pytest -q tests -k "$(TEST)"
+
+members:
+	pytest -q tests -k "test_members_syntax"
+
+categories:
+	pytest -q tests -k "test_categories_syntax"
+
+dimensions:
+	pytest -q tests -k "test_dimensions_syntax"
+
+domains:
+	pytest -q tests -k "test_domains_syntax"
 
 listtests:
 	py.test tests -q --collect-only	

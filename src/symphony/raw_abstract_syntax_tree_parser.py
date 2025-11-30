@@ -20,7 +20,7 @@ from symphony.abstract_syntax_tree import (
     EquationDeclaration,
     MemberDeclaration,
     ParameterDeclaration,
-    Program,
+    Model,
     SourcePosition,
     VariableDeclaration,
 )
@@ -51,8 +51,12 @@ class ConvertToAbstractSyntaxTree(Transformer):
     # ---------- low-level helpers ----------
 
     @staticmethod
-    def _position(token: Token) -> SourcePosition:
-        return SourcePosition(line=token.line, column=token.column)
+    def _position(token_or_meta: Any) -> SourcePosition:
+        line = getattr(token_or_meta, "line", None)
+        column = getattr(token_or_meta, "column", None)
+        if line is None or column is None:
+            raise AttributeError("Position data not available; ensure positions are propagated in the parser.")
+        return SourcePosition(line=line, column=column)
 
     @staticmethod
     def _parse_escaped_string(token: Token) -> str:
@@ -194,29 +198,29 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     def category_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # "category" NAME ":" label name_list doc?
-        type_token = Token("TYPE", "category")
+        type_position = self._position(meta)
         name_token: Token = items[0]
         label_text, label_pos = items[1]
         documentation, list_term = self._pick_doc_and_list(items[2:])
         return self._build_category(
-            type_token, name_token, label_text, label_pos, list_term, documentation
+            type_position, name_token, label_text, label_pos, list_term, documentation
         )
 
     def dimension_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
         # "dimension" NAME ":" label dimension_expression doc?
-        type_token = Token("TYPE", "dimension")
+        type_position = self._position(meta)
         name_token: Token = items[0]
         label_text, label_pos = items[1]
         documentation, expression = self._pick_doc_and_expr(items[2:])
         return self._build_dimension(
-            type_token, name_token, label_text, label_pos, expression, documentation
+            type_position, name_token, label_text, label_pos, expression, documentation
         )
 
     def other_declaration(self, kind: str, meta: Any, items: List[Any]) -> DeclarationNode:
         """
         Helper for declarations with just NAME ":" label doc?.
         """
-        type_token = Token("TYPE", kind)
+        type_position = self._position(meta)
         name_token: Token = items[0]
         label_text, label_pos = items[1]
 
@@ -226,7 +230,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
                 documentation = item  # type: ignore[assignment]
                 break
 
-        return self._build_other(type_token, name_token, label_text, label_pos, documentation)
+        return self._build_other(kind, type_position, name_token, label_text, label_pos, documentation)
 
     # Rule-specific wrappers:
 
@@ -243,12 +247,12 @@ class ConvertToAbstractSyntaxTree(Transformer):
         return self.other_declaration("equation", meta, items)
 
     def dimensions_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
-        type_token = Token("TYPE", "dimensions")
+        type_position = self._position(meta)
         name_token: Token = items[0]
         label_text, label_pos = items[1]
         documentation, list_term = self._pick_doc_and_list(items[2:])
         return self._build_dimensions(
-            type_token, name_token, label_text, label_pos, list_term, documentation
+            type_position, name_token, label_text, label_pos, list_term, documentation
         )
     
 
@@ -262,7 +266,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     def _build_dimension(
         self,
-        type_token: Token,
+        type_position: SourcePosition,
         name_token: Token,
         label_text: str,
         label_position: SourcePosition,
@@ -272,7 +276,6 @@ class ConvertToAbstractSyntaxTree(Transformer):
         """
         Build a DimensionDeclaration without evaluating the expression.
         """
-        type_position = self._position(type_token)
         name_position = self._position(name_token)
         name_str = name_token.value
 
@@ -294,7 +297,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     def _build_dimensions(
         self,
-        type_token: Token,
+        type_position: SourcePosition,
         name_token: Token,
         label_text: str,
         label_position: SourcePosition,
@@ -305,7 +308,6 @@ class ConvertToAbstractSyntaxTree(Transformer):
         Build a DimensionsDeclaration, preserving the dimension list syntactically.
         No dimensions-membership validation happens here.
         """
-        type_position = self._position(type_token)
         name_position = self._position(name_token)
         name_str = name_token.value
 
@@ -332,7 +334,7 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     def _build_category(
         self,
-        type_token: Token,
+        type_position: SourcePosition,
         name_token: Token,
         label_text: str,
         label_position: SourcePosition,
@@ -343,7 +345,6 @@ class ConvertToAbstractSyntaxTree(Transformer):
         Build a CategoryDeclaration, preserving the member list syntactically.
         No category-membership validation happens here.
         """
-        type_position = self._position(type_token)
         name_position = self._position(name_token)
         name_str = name_token.value
 
@@ -369,7 +370,8 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     def _build_other(
         self,
-        type_token: Token,
+        type_text: str,
+        type_position: SourcePosition,
         name_token: Token,
         label_text: str,
         label_position: SourcePosition,
@@ -378,21 +380,19 @@ class ConvertToAbstractSyntaxTree(Transformer):
         """
         Build all other declaration types that do not carry expressions in Pass 1.
         """
-        type_text = type_token.value
         if type_text != type_text.lower():
             raise ValueError(
                 f"Declaration type must be lower-case, found '{type_text}' "
-                f"at {type_token.line}:{type_token.column}"
+                f"at {type_position.line}:{type_position.column}"
             )
 
         try:
             declaration_type = DeclarationType(type_text)
         except ValueError as exc:
             raise ValueError(
-                f"Unknown declaration type '{type_text}' at {type_token.line}:{type_token.column}"
+                f"Unknown declaration type '{type_text}' at {type_position.line}:{type_position.column}"
             ) from exc
 
-        type_position = self._position(type_token)
         name_position = self._position(name_token)
         name_str = name_token.value
 
@@ -424,12 +424,12 @@ class ConvertToAbstractSyntaxTree(Transformer):
 
     # ---------- top-level rule ----------
 
-    def start(self, meta: Any, items: List[DeclarationNode]) -> Program:
+    def start(self, meta: Any, items: List[DeclarationNode]) -> Model:
         """
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
         """
-        return Program(declarations=items)
+        return Model(declarations=items)
 
 
 # ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------
@@ -438,13 +438,13 @@ def build_parser(grammar_file: Path) -> Lark:
     """
     Build a Lark parser from the given grammar file.
     """
-    return Lark.open(grammar_file, parser="lalr")
+    return Lark.open(grammar_file, parser="lalr", propagate_positions=True)
 
 
-def parse_declarations(parser: Lark, text: str) -> Program:
+def parse_declarations(parser: Lark, text: str) -> Model:
     """
     Parse source text into a Program AST using the Pass 1 transformer.
     """
     tree: Tree = parser.parse(text)
-    program: Program = ConvertToAbstractSyntaxTree().transform(tree)  # type: ignore[assignment]
+    program: Model = ConvertToAbstractSyntaxTree().transform(tree)  # type: ignore[assignment]
     return program
