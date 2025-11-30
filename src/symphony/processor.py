@@ -14,7 +14,7 @@ from symphony.abstract_syntax_tree import (
     program_to_summary_text,
 )
 from symphony.logging import configure_logging, print_parse_error
-from symphony.raw_abstract_syntax_tree_parser import build_parser, parse_declarations
+from symphony.raw_abstract_syntax_tree_transformer import build_parser, parse_declarations
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:

@@ -48,11 +48,11 @@ domains:
 	pytest -q tests -k "test_domains_syntax"
 
 variables:
-	pytest -q tests -k "test_variables_json"  \
+	pytest -q tests -k "test_variables_json" ; \
 	pytest -q tests -k "test_variables_syntax"
 
 equations:
-	pytest -q tests -k "test_equations_json"  \
+	pytest -q tests -k "test_equations_json" ; \
 	pytest -q tests -k "test_equations_syntax"
 
 listtests:
@@ -99,5 +99,8 @@ push:
 	git push; \
 	echo "Done"
 
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+
 # List the targets that are not related to specific file timestamps
-.PHONY: push sym run format whl pyc build doco tests test test-one listtests init members categories dimensions domains variables
+.PHONY: push sym run format whl pyc build doco tests test test-one listtests init members categories dimensions domains variables clean

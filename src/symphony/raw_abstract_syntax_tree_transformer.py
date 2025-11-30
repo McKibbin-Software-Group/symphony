@@ -35,9 +35,9 @@ from symphony.abstract_syntax_tree import (
 Documentation = Tuple[str, SourcePosition]
 
 @v_args(meta=True)
-class ConvertToAbstractSyntaxTree(Transformer):
+class RawAbstractSyntaxTreeTransformer(Transformer):
     """
-    Pass 1: parse-tree → raw AST, with no semantic validation.
+    Pass 1: parse-tree → raw abstract syntax tree tokens, with no semantic validation.
 
     Responsibilities:
       - Build AST nodes for all top-level declarations.
@@ -452,5 +452,5 @@ def parse_declarations(parser: Lark, text: str) -> Model:
     Parse source text into a Program AST using the Pass 1 transformer.
     """
     tree: Tree = parser.parse(text)
-    program: Model = ConvertToAbstractSyntaxTree().transform(tree)  # type: ignore[assignment]
+    program: Model = RawAbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
     return program

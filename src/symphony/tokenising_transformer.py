@@ -2,12 +2,11 @@ from lark import Transformer, Token
 from typing import Any
 import logging
 
-class JSONTransformer(Transformer):
+class TokenisingTransformer(Transformer):
     """
-    Transformer to convert a Lark parse tree into a JSON-serializable structure.
-    
-    Each rule in the grammar is converted into a dictionary with its type and children.
-    
+    ### Overview
+
+    Transformer that converts a Lark parse tree into a JSON-serializable token structure.    
     """
     def token(self, tok: Token) -> Any:
         logging.info(tok.type + " " + str(tok))
