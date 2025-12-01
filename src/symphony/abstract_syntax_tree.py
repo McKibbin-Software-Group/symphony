@@ -73,7 +73,7 @@ class Declaration:
 @dataclass(frozen=True)
 class MemberDeclaration(Declaration):
     """
-    `member` NAME ":" label doc?
+    Member declaration.
     """
     pass
 
@@ -89,7 +89,7 @@ class UnitDeclaration(Declaration):
 @dataclass(frozen=True)
 class DimensionDeclaration(Declaration):
     """
-    `dimension` NAME ":" label dimension_expression? doc?
+    Dimension declaration.
 
     Pass 1:
         - `dimension_expression` holds the raw dimension expression AST.
@@ -106,25 +106,16 @@ class DimensionDeclaration(Declaration):
 @dataclass(frozen=True)
 class CategoryDeclaration(DimensionDeclaration):
     """
-    `category` NAME ":" label [name_list] doc?
+    Category declaration (a specialized dimension).
     """
     pass
 
 @dataclass(frozen=True)
 class DomainDeclaration(Declaration):
     """
-    Domain declaration (exact syntax driven by the grammar).
+    Domain declaration.
     """
     tuples: DomainTuples = field(default_factory=list)
-
-@dataclass(frozen=True)
-class DimensionsDeclaration(DomainDeclaration):
-    """
-     "dimensions" NAME ":" label name_list doc?
-
-    `dimensions` lists the name of each included dimension
-    """
-    dimensions: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -154,7 +145,6 @@ DeclarationNode = Union[
     MemberDeclaration,
     CategoryDeclaration,
     DimensionDeclaration,
-    DimensionsDeclaration,
     DomainDeclaration,
     ParameterDeclaration,
     VariableDeclaration,

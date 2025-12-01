@@ -23,7 +23,6 @@ from symphony.abstract_syntax_tree import (
     DeclarationNode,
     DeclarationType,
     DimensionDeclaration,
-    DimensionsDeclaration,
     DomainDeclaration,
     EquationDeclaration,
     MemberDeclaration,
@@ -356,18 +355,6 @@ class ToAST(Transformer):
                 )
             self._declared_members.add(name_str)
             return MemberDeclaration(
-                declaration_type=declaration_type,
-                type_position=type_position,
-                name=name_str,
-                name_position=name_position,
-                label=label_text,
-                label_position=label_position,
-                documentation=documentation[0] if documentation else None,
-                documentation_position=documentation[1] if documentation else None,
-            )
-
-        if declaration_type == DeclarationType.dimensions:
-            return DimensionsDeclaration(
                 declaration_type=declaration_type,
                 type_position=type_position,
                 name=name_str,

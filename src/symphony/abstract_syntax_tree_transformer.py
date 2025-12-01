@@ -14,7 +14,6 @@ from symphony.abstract_syntax_tree import (
     DimensionDeclaration,
     DimensionExpression,
     DimensionTerm,
-    DimensionsDeclaration,
     DomainDeclaration,
     DomainExpression,
     DomainTerm,
@@ -301,43 +300,6 @@ class AbstractSyntaxTreeTransformer(Transformer):
             dimension_expression=expression,
         )
 
-    def _build_dimensions(
-        self,
-        type_position: SourcePosition,
-        name_token: Token,
-        label_text: str,
-        label_position: SourcePosition,
-        list_term: Optional[DimensionTerm],
-        documentation: Optional[Documentation],
-    ) -> DimensionsDeclaration:
-        """
-        Build a DimensionsDeclaration, preserving the dimension list syntactically.
-        No dimensions-membership validation happens here.
-        """
-        name_position = self._position(name_token)
-        name_str = name_token.value
-
-        dimensions: List[str] = []
-        if list_term is not None:
-            tag, payload = list_term
-            if tag != "list":
-                raise ValueError("Internal error: expected list term for dimensions.")
-            tokens: Iterable[Token] = payload
-            dimensions = [tok.value for tok in tokens]
-
-        return DimensionsDeclaration(
-            declaration_type=DeclarationType.dimensions,
-            type_position=type_position,
-            name=name_str,
-            name_position=name_position,
-            label=label_text,
-            label_position=label_position,
-            documentation=documentation[0] if documentation else None,
-            documentation_position=documentation[1] if documentation else None,
-            tuples=[],
-            dimensions=dimensions,
-        )
-
     def _build_category(
         self,
         type_position: SourcePosition,
@@ -413,22 +375,23 @@ class AbstractSyntaxTreeTransformer(Transformer):
             documentation_position=documentation[1] if documentation else None,
         )
 
-        if declaration_type == DeclarationType.member:
-            return MemberDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-        if declaration_type == DeclarationType.parameter:
-            return ParameterDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-        if declaration_type == DeclarationType.unit:
-            return UnitDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-        if declaration_type == DeclarationType.variable:
-            return VariableDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-        if declaration_type == DeclarationType.equation:
-            return EquationDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-        if declaration_type == DeclarationType.dimensions:
-            return DimensionsDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-        if declaration_type == DeclarationType.domain:
-            return DomainDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-
-        raise AssertionError(f"Unhandled declaration type {declaration_type}")
+        match declaration_type:
+            case DeclarationType.member:
+                return MemberDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case DeclarationType.parameter:
+                return ParameterDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case DeclarationType.unit:
+                return UnitDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case DeclarationType.variable:
+                return VariableDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case DeclarationType.equation:
+                return EquationDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case DeclarationType.domain:
+                return DomainDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case DeclarationType.dimension:
+                return DimensionDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
+            case _:
+                raise AssertionError(f"Unhandled declaration type {declaration_type}")
 
     # ---------- top-level rule ----------
 

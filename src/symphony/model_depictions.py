@@ -9,7 +9,6 @@ from symphony.abstract_syntax_tree import (
     DimensionDeclaration,
     DimensionExpression,
     DimensionTerm,
-    DimensionsDeclaration,
     DomainDeclaration,
     DomainExpression,
     DomainTerm,

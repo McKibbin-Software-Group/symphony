@@ -1,5 +1,3 @@
-// ---------- Lexer ----------
-
 %import common.CNAME -> NAME
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
@@ -84,15 +82,7 @@ dimension_expression: dimension_term (SET_OPERATOR dimension_term)*
 dimension_term: member_list
         | NAME -> dimension_reference
 
-dimension_function_conditions: 
 // Domain expressions
-// Every domain terms should be resolvable to a domain.
-// The set operators enable domain calculations.
-// Kinds of domain terms include:
-// A reference to another named domain (a domain reference)
-// A function of a list of dimensions (e.g. cartesian product of a list of dimensions)
-// Note that a dimension can be specified by name or as a list of members.
-// list of dimensions reference should be able to be a reference to either another domain or a "dimensions" declaration, noting that a dimensions implicitly defines a domain
 domain_expression: domain_term (SET_OPERATOR domain_term)*
 domain_term: LEFT_ROUND_BRACKET domain_list tuple_conditions? RIGHT_ROUND_BRACKET -> domain_function
         | NAME -> domain_reference
