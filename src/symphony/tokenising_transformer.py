@@ -6,7 +6,9 @@ class TokenisingTransformer(Transformer):
     """
     ### Overview
 
-    Transformer that converts a Lark parse tree into a JSON-serializable token structure.    
+    Transformer that converts a Lark parse tree into a JSON-serializable token structure.
+
+    This is only used for grammar design analysis and debugging.    
     """
     def token(self, tok: Token) -> Any:
         logging.info(tok.type + " " + str(tok))

@@ -10,11 +10,15 @@ from lark import UnexpectedInput
 
 from symphony.abstract_syntax_tree import (
     Model,
-    abstract_syntax_tree_to_text,
-    program_to_summary_text,
 )
+
+from symphony.model_depictions import (
+    model_to_tree,
+    model_to_summary,
+)
+
 from symphony.logging import configure_logging, print_parse_error
-from symphony.raw_abstract_syntax_tree_transformer import build_parser, parse_declarations
+from symphony.abstract_syntax_tree_transformer import build_parser, parse_declarations
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -91,9 +95,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     if args.format == "tree":
-        output = abstract_syntax_tree_to_text(program, show_position=args.show_pos)
+        output = model_to_tree(program, show_position=args.show_pos)
     else:
-        output = program_to_summary_text(program, show_position=args.show_pos)
+        output = model_to_summary(program, show_position=args.show_pos)
 
     print(output)
     return 0

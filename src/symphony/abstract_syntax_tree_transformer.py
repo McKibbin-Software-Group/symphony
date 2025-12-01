@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple
 
 from lark import Lark, Transformer, Token, Tree, v_args
+import ast
 
 from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
@@ -35,7 +36,7 @@ from symphony.abstract_syntax_tree import (
 Documentation = Tuple[str, SourcePosition]
 
 @v_args(meta=True)
-class RawAbstractSyntaxTreeTransformer(Transformer):
+class AbstractSyntaxTreeTransformer(Transformer):
     """
     Pass 1: parse-tree → raw abstract syntax tree tokens, with no semantic validation.
 
@@ -65,8 +66,9 @@ class RawAbstractSyntaxTreeTransformer(Transformer):
         Convert an ESCAPED_STRING token into its Python string content.
         """
         # Token.value includes the quotes; strip and unescape.
-        raw = token.value
-        return raw[1:-1].encode("utf-8").decode("unicode_escape")
+        return ast.literal_eval(token.value)
+        # raw = token.value
+        # return raw[1:-1].encode("utf-8").decode("unicode_escape")
 
     # ---------- leaf grammar rules ----------
 
@@ -446,11 +448,10 @@ def build_parser(grammar_file: Path) -> Lark:
     """
     return Lark.open(grammar_file, parser="lalr", propagate_positions=True)
 
-
 def parse_declarations(parser: Lark, text: str) -> Model:
     """
     Parse source text into a Program AST using the Pass 1 transformer.
     """
     tree: Tree = parser.parse(text)
-    program: Model = RawAbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
+    program: Model = AbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
     return program

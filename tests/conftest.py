@@ -3,10 +3,10 @@ from lark import Lark, Tree, UnexpectedInput
 import pytest
 from pathlib import Path
 from importlib import resources
-from symphony.abstract_syntax_tree import Model, abstract_syntax_tree_to_text, program_to_summary_text
+from symphony.abstract_syntax_tree import Model
 from symphony.logging import print_parse_error
 from symphony.processor import build_parser
-from symphony.raw_abstract_syntax_tree_transformer import parse_declarations
+from symphony.abstract_syntax_tree_transformer import parse_declarations
 
 @pytest.fixture
 def data_folder() -> Path:

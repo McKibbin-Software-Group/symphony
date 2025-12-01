@@ -31,10 +31,12 @@ from symphony.abstract_syntax_tree import (
     Model,
     SourcePosition,
     VariableDeclaration,
-    abstract_syntax_tree_to_text,
-    program_to_summary_text,
 )
 
+from symphony.model_depictions import (
+    model_to_tree,
+    model_to_summary,
+)
 
 # The content + position of a docstring for an entity.
 Documentation = Tuple[str, SourcePosition]
@@ -607,9 +609,9 @@ def main() -> int:
         return 1
 
     if args.format == "tree":
-        output: str = abstract_syntax_tree_to_text(program, show_position=args.show_pos)
+        output: str = model_to_tree(program, show_position=args.show_pos)
     else:
-        output = program_to_summary_text(program, show_position=args.show_pos)
+        output = model_to_summary(program, show_position=args.show_pos)
 
     print(output)
     return 0
