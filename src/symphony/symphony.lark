@@ -1,3 +1,5 @@
+SUM: "sum"
+PROD: "prod"
 %import common.CNAME -> NAME
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
@@ -46,10 +48,10 @@ member_declaration:     "member"     NAME ":" label documentation?
 category_declaration:   "category"   NAME ":" label member_list documentation?
 dimension_declaration:  "dimension"  NAME ":" label dimension_expression documentation?
 domain_declaration:     "domain"     NAME ":" label domain_expression? documentation?
-parameter_declaration:  "parameter"  NAME ":" label domain? unit  documentation?
-variable_declaration:   "variable"   NAME ":" label domain? unit deviation_unit logged? intertemporal? documentation?
-equation_declaration:   "equation"   NAME ":" label domain? equation_expression documentation?
+parameter_declaration:  "parameter"  NAME ":" label domain_expression? unit? documentation?
+variable_declaration:   "variable"   NAME ":" label domain_expression? unit? deviation_unit? logged? intertemporal? documentation?
 unit_declaration:       "unit"       NAME ":" label documentation?
+equation_declaration:   "equation"   NAME? ":" label? domain_expression? equation_expression documentation?
 
 label: ESCAPED_STRING
 
@@ -57,12 +59,7 @@ documentation: TRIPLE_STRING
 
 name_list: NAME ("," NAME)*
 
-# Domain list is a list of domains and/or dimension names.
-domain_list: name_list
-
 member_list: LEFT_SQUARE_BRACKET name_list RIGHT_SQUARE_BRACKET
-
-domain: "domain" EQUALS domain_expression?
 
 unit_reference: NAME
 unit: "unit" EQUALS unit_reference
@@ -82,13 +79,20 @@ dimension_expression: dimension_term (SET_OPERATOR dimension_term)*
 dimension_term: member_list
         | NAME -> dimension_reference
 
-// Domain expressions
-domain_expression: domain_term (SET_OPERATOR domain_term)*
-domain_term: LEFT_ROUND_BRACKET domain_list tuple_conditions? RIGHT_ROUND_BRACKET -> domain_function
-        | NAME -> domain_reference
+// Domains
+domain_expression: LEFT_ROUND_BRACKET domain_term (SET_OPERATOR domain_term)* RIGHT_ROUND_BRACKET
+
+domain_term: domain_list tuple_conditions?
+
+# A domain list is a singleton domain reference or 
+# a list of one or more dimension references or 
+# a list of one or more member references.
+domain_list: name_list | member_list
+
+tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
 
 tuple_condition: TUPLE_POSITION (EQUALS|NOT_EQUALS) TUPLE_POSITION
-tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
+
 
 // ---------------------------------------------------------
 // Equation Expression Grammar
@@ -97,7 +101,7 @@ tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
 // Top-level equation: LHS = RHS
 equation_expression: equality_expression
 
-lhs_variable_reference: NAME
+lhs_variable_reference: NAME (domain_expression)?
 rhs_variable_reference: NAME
 
 equality_expression: lhs_variable_reference EQUALS sum_expression
@@ -129,7 +133,7 @@ atom: NUMBER
     | rhs_variable_reference
     | function
     | expectation
-    | sum
+    | summation
     | product
     | LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
 
@@ -140,17 +144,23 @@ atom: NUMBER
 FUNCTION_NAME: "log" | "exp" | "lead" | "lag"
 function: FUNCTION_NAME LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
 
-// Expectations E(expr) - used to identify expectations in period t of values in future periods.
+// ---------------------------------------------------------
+// Expectation operator - time t expectation of t+1 value.
+// ---------------------------------------------------------
 expectation: "E" LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
 
 // ---------------------------------------------------------
-// Summation and Product across domain members
+// Summation and Product across members at a specified
+// tuple position within a domain.
+// If the tuple position is omitted it is inferred to between
+// the first position in the tuple.
 // 
-// sum(dimension, tuple_position, expr) 
-// prod(dimension, tuple_position, expr)
+// sum(dimension, tuple_position| expr) 
+// prod(dimension, tuple_position| expr)
 // ---------------------------------------------------------
+
 dimension_reference: NAME
 
-sum: "sum" LEFT_ROUND_BRACKET dimension_reference "," TUPLE_POSITION "," equation_expression RIGHT_ROUND_BRACKET
+summation: SUM LEFT_ROUND_BRACKET dimension_reference ["," TUPLE_POSITION] "|" sum_expression RIGHT_ROUND_BRACKET
 
-product: "prod" LEFT_ROUND_BRACKET dimension_reference "," TUPLE_POSITION "," equation_expression RIGHT_ROUND_BRACKET
+product: PROD LEFT_ROUND_BRACKET dimension_reference ["," TUPLE_POSITION] "|" sum_expression RIGHT_ROUND_BRACKET

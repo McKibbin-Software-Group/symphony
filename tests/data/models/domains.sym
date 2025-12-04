@@ -1,10 +1,12 @@
 member energy: "energy"
 member mining: "mining"
 member agriculture: "agriculture"
-member durable_manufacturing: "durable manufacturing"
-member nondurable_manufacturing: "nondurable manufacturing"
+member manufacturing: "manufacturing"
+member services: "services"
 
-category sectors: "All sectors" [energy, mining, agriculture, durable_manufacturing, nondurable_manufacturing, services] """All sectors"""
+category sectors: "All sectors" 
+    [energy, mining, agriculture, manufacturing, services] 
+"""All sectors"""
 
 member USA: "USA"
 member AUS: "Australia"
@@ -16,12 +18,37 @@ category regions: "All regions of the World" [
     ROW
 ]
 
-dimension origins: "Origin regions" regions 
+dimension origins: "Origin regions" 
+    regions 
 
-dimension destinations: "Destination regions" regions
+dimension destinations: "Destination regions" 
+    regions
 
-domain product_of_colours_and_regions: "All colours for all regions" (colours, regions) """All colours for all regions"""
+domain regions: "All regions" 
+    (regions) 
+"""All regions"""
 
-domain bilateral_trade: "Bilateral trade flows" (origins, destinations | 1 != 2) """Bilateral trade flows"""
+domain product_of_colours_and_regions: "All colours for all regions" 
+    (colours, regions) 
+"""All colours for all regions"""
 
-domain bilateral_trade_by_sector: "Bilateral trade flows by sector" (sectors, origins, destinations | 2 != 3) """Bilateral trade flows by sector"""
+domain bilateral_trade: "Bilateral trade flows" 
+    (origins, destinations | 1 != 2) 
+"""Bilateral trade flows"""
+
+domain origins_to_destinations: "trade flows"
+    (origins,destinations - origins,destinations|1=2)
+
+domain bilateral_trade_by_sector: "Bilateral trade flows by sector" 
+    (sectors, origins, destinations | 2 != 3) 
+"""Bilateral trade flows by sector"""
+
+domain sectors_by_region: "Each sector for each region" 
+    (sectors, regions)
+
+domain mining_manufacturing: "Mining and manufacturing sectors" 
+    ([mining, manufacturing]) 
+
+domain mining: "Mining sector" 
+    (mining_manufacturing - [manufacturing])
+

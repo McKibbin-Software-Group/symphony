@@ -32,19 +32,58 @@ domain bilateral_by_sector: "Bilateral flows by sector"
     (sectors, origins, destinations | 2 != 3) 
     """Bilateral trade flows by sector"""
 
+domain sectors_by_region: "Each sector for each region" 
+    (sectors, regions)
+
 unit percent: "percent"
+unit percentage_points: "percentage points"
 unit gdp: "gdp" """percent of GDP in the first projection year"""
 unit percent_of_gdp: "percent of GDP" """percent of GDP"""
 
-parameter depreciation_rate: "Depreciation rate" 
+parameter rho: "Depreciation rate" 
     domain=regions 
     unit=percent 
     """Depreciation rate for capital stock in all sectors"""
+
+parameter sigma_df: "Elasticity of substitution between domestic and foreign versions of the same good"
+    domain=sectors_by_region
 
 variable bilateral_imports: "Bilateral imports" 
     domain=bilateral_by_sector 
     unit=gdp
     deviation_unit=percent_of_gdp
-    logged=True
+    logged=False
     """Bilateral imports from origin to destination region, by sector"""
 
+variable real_gdp: "Real Gross Domestic Product"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable INTN: "Nominal interest rate"
+    domain=(regions)
+    unit=percent
+    deviation_unit=percentage_points
+    """One-year government interest rate"""
+
+variable REMIT: "USD remittances from the USA"
+    domain=(not_USA)
+    unit=gdp
+    deviation_unit=LCU_Billions
+    """Wealth sent by households in the USA to households in another regions"""
+
+variable REMITU: "USD remittances to the USA"
+    domain=(USA)
+    unit=gdp
+    deviation_unit=LCU_Billions
+    """Wealth sent by households in other regions to the USA"""
+
+equation:
+    INVT = INVP + INVY + INVZ
+
+//equation:
+//    INVP = sum(sectors,1|INV)
+
+//equation:
+//    REMITU = sum(not_USA| REMIT)

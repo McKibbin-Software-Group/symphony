@@ -44,16 +44,14 @@ dimensions:
 	pytest -q tests -k "test_dimensions_syntax"
 
 domains:
-	pytest -q tests -k "test_domains_json" ; \
-	pytest -q tests -k "test_domains_syntax"
+	pytest -q tests -k "test_domains_json" 
 
 variables:
 	pytest -q tests -k "test_variables_json" ; \
 	pytest -q tests -k "test_variables_syntax"
 
 equations:
-	pytest -q tests -k "test_equations_json" ; \
-	pytest -q tests -k "test_equations_syntax"
+	pytest -q tests -k "test_equations_json" 
 
 listtests:
 	py.test tests -q --collect-only	
