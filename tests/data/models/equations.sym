@@ -99,13 +99,22 @@ variable REMITU: "USD remittances to the USA"
     domain=(USA)
     unit=gdp
     deviation_unit=LCU_Billions
-    """Wealth sent by households in other regions to the USA"""
+    """
+    Wealth sent by households in other regions to the USA
+    """
 
-equation:
+equation: "Total investment aggregation"
     INVT = INVP + INVY + INVZ
+    """
+    Total investment is the sum of investment across all sectors 
+    including the sectors that produce raw and household capital
+    """
 
-equation:
+equation: "Sum of investment across sectors for sector investment"
     INVP = sum(sectors,1|INV)
 
-equation:
-    REMITU = sum(not_USA| REMIT)
+equation: "Ensure global remittances sum to zero"
+    REMITU = - sum(not_USA| REMIT)
+    """
+    USA remittances are the negative sum of remittances by other regions.
+    """

@@ -11,6 +11,20 @@ DEVIATION_UNIT: "deviation_unit"
 EQUATION: "equation"
 LOGGED: "logged"
 INTERTEMPORAL: "intertemporal"
+LEFT_SQUARE_BRACKET: "["
+RIGHT_SQUARE_BRACKET: "]"
+
+LEFT_ROUND_BRACKET: "("
+RIGHT_ROUND_BRACKET: ")"
+CONDITIONAL: "|"
+EQUALS: "="
+NOT_EQUALS: "!="
+PLUS: "+"
+MINUS: "-"
+
+TRUE: "True" | "true"
+FALSE: "False" | "false"
+boolean: TRUE | FALSE
 
 %import common.CNAME -> NAME
 %import common.ESCAPED_STRING
@@ -29,19 +43,6 @@ INTERTEMPORAL: "intertemporal"
 // Triple-quoted documentation string (non-greedy, spans lines)
 TRIPLE_STRING: /\"\"\"(.|\n|\r)*?\"\"\"/
 
-LEFT_SQUARE_BRACKET: "["
-RIGHT_SQUARE_BRACKET: "]"
-
-LEFT_ROUND_BRACKET: "("
-RIGHT_ROUND_BRACKET: ")"
-CONDITIONAL: "|"
-EQUALS: "="
-NOT_EQUALS: "!="
-PLUS: "+"
-MINUS: "-"
-
-TRUE: "True" | "true"
-FALSE: "False" | "false"
 
 // ---------- Parser ----------
 
@@ -63,7 +64,7 @@ domain_declaration:     DOMAIN NAME ":" label domain_expression? documentation?
 parameter_declaration:  PARAMETER NAME ":" label (DOMAIN EQUALS domain_expression)? unit? documentation?
 variable_declaration:   VARIABLE NAME ":" label (DOMAIN EQUALS domain_expression)? unit? deviation_unit? logged? intertemporal? documentation?
 unit_declaration:       UNIT NAME ":" label documentation?
-equation_declaration:   EQUATION NAME? ":" label? domain_expression? equation_expression documentation?
+equation_declaration:   EQUATION ":" label domain_expression? equation_expression documentation?
 
 label: ESCAPED_STRING
 
@@ -73,26 +74,30 @@ name_list: NAME ("," NAME)*
 
 member_list: LEFT_SQUARE_BRACKET name_list RIGHT_SQUARE_BRACKET
 
-unit_reference: NAME
-unit: UNIT EQUALS unit_reference
+unit: UNIT EQUALS unit_reference 
+
 deviation_unit: DEVIATION_UNIT EQUALS unit_reference
 
-logged: LOGGED EQUALS (TRUE | FALSE)
+unit_reference: NAME
 
-intertemporal: INTERTEMPORAL EQUALS (TRUE | FALSE)
+logged: LOGGED EQUALS boolean
 
-SET_OPERATOR: PLUS | MINUS
+intertemporal: INTERTEMPORAL EQUALS boolean
+
+set_operator: PLUS | MINUS
 
 // Dimension member expressions
-dimension_expression: dimension_term (SET_OPERATOR dimension_term)*
+dimension_expression: dimension_term (set_operator dimension_term)*
 
 // A dimension_term is either a bracketed list of member names or 
 // a reference to a previously-declared dimension or category using its NAME.
 dimension_term: member_list
-        | NAME -> dimension_reference
+        | dimension_reference
+
+dimension_reference: NAME
 
 // Domains
-domain_expression: LEFT_ROUND_BRACKET domain_term (SET_OPERATOR domain_term)* RIGHT_ROUND_BRACKET
+domain_expression: LEFT_ROUND_BRACKET domain_term (set_operator domain_term)* RIGHT_ROUND_BRACKET
 
 domain_term: domain_list tuple_conditions?
 
@@ -105,38 +110,40 @@ tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
 
 tuple_condition: TUPLE_POSITION (EQUALS|NOT_EQUALS) TUPLE_POSITION
 
-
 // ---------------------------------------------------------
-// Equation Expression Grammar
+// Equation Expression Grammar (LALR-friendly)
 // ---------------------------------------------------------
 
 // Top-level equation: LHS = RHS
 equation_expression: equality_expression
 
-lhs_variable_reference: NAME (domain_expression)?
+equality_expression: lhs_wrapped_variable EQUALS expression
+
+lhs_wrapped_variable: lhs_variable_reference
+                     | lhs_expectation
+                     | lhs_lead 
+
+lhs_variable_reference: NAME [domain_expression]
 rhs_variable_reference: NAME
 
-equality_expression: lhs_variable_reference EQUALS sum_expression
+// Root of arithmetic expression
+?expression: sum_expression
 
-// Addition and subtraction
-sum_expression: product_expression
-        | sum_expression PLUS product_expression
-        | sum_expression MINUS product_expression
+// Addition and subtraction (left associative)
+sum_expression: product_expression ((PLUS | MINUS) product_expression)*
 
-// Multiplication and division
-product_expression: power_expression
-            | product_expression "*" power_expression
-            | product_expression "/" power_expression
+// Multiplication and division (left associative)
+product_expression: power_expression (("*" | "/") power_expression)*
 
 // Exponentiation (right associative)
 power_expression: unary_expression
-          | unary_expression "^" power_expression
-          | unary_expression "**" power_expression
+                | unary_expression "^" power_expression
+                | unary_expression "**" power_expression
 
 // Unary operators
 unary_expression: atom
-          | PLUS unary_expression
-          | MINUS unary_expression
+                | PLUS unary_expression
+                | MINUS unary_expression
 
 // ---------------------------------------------------------
 // Atomic expressions: constants, names, functions, brackets
@@ -144,35 +151,33 @@ unary_expression: atom
 atom: NUMBER
     | rhs_variable_reference
     | function
-    | expectation
+    | rhs_expectation
     | summation
     | product
-    | LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
+    | LEFT_ROUND_BRACKET sum_expression RIGHT_ROUND_BRACKET
 
 // ---------------------------------------------------------
 // Function calls
 // ---------------------------------------------------------
-
 FUNCTION_NAME: "log" | "exp" | "lead" | "lag"
-function: FUNCTION_NAME LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
+
+function: FUNCTION_NAME "(" sum_expression ")"
+
+lhs_lead: "lead" "(" lhs_wrapped_variable RIGHT_ROUND_BRACKET ")"
 
 // ---------------------------------------------------------
-// Expectation operator - time t expectation of t+1 value.
+// Expectation operator
 // ---------------------------------------------------------
-expectation: "E" LEFT_ROUND_BRACKET equation_expression RIGHT_ROUND_BRACKET
+
+rhs_expectation: "E" "(" rhs_variable_reference ")"
+lhs_expectation: "E" "(" lhs_wrapped_variable ")"
 
 // ---------------------------------------------------------
 // Summation and Product across members at a specified
 // tuple position within a domain.
-// If the tuple position is omitted it is inferred to between
-// the first position in the tuple.
-// 
-// sum(dimension, tuple_position| expr) 
-// prod(dimension, tuple_position| expr)
 // ---------------------------------------------------------
 
-dimension_reference: NAME
+index_specification: dimension_reference ["," TUPLE_POSITION]
 
-summation: SUM LEFT_ROUND_BRACKET dimension_reference ["," TUPLE_POSITION] "|" sum_expression RIGHT_ROUND_BRACKET
-
-product: PROD LEFT_ROUND_BRACKET dimension_reference ["," TUPLE_POSITION] "|" sum_expression RIGHT_ROUND_BRACKET
+summation: SUM "(" index_specification "|" sum_expression ")"
+product: PROD "(" index_specification "|" sum_expression ")"
