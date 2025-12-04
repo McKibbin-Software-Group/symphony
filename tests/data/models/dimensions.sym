@@ -15,6 +15,9 @@ member ROW: "Rest of World"
 category regions: "All regions of the World" 
     [USA, AUS, ROW]
 
+dimension not_USA: "All regions except the USA"
+    regions - [USA]
+
 dimension red_green: "Red and Green by subtracting Blue from All Colours" 
     colours - [blue]
 

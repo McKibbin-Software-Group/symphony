@@ -18,13 +18,16 @@ category regions: "All regions of the World" [
     ROW
 ]
 
+dimension not_USA: "All regions except the USA"
+    regions - [USA]
+    
 dimension origins: "Origin regions" 
     regions 
 
 dimension destinations: "Destination regions" 
     regions
 
-domain regions: "All regions" 
+domain regions_domain: "All regions" 
     (regions) 
 """All regions"""
 
@@ -43,14 +46,17 @@ domain bilateral_trade_by_sector: "Bilateral trade flows by sector"
     (sectors, origins, destinations | 2 != 3) 
 """Bilateral trade flows by sector"""
 
+domain sectors_by_region: "Each sector for each region" 
+    (sectors, regions)
+
 domain mining_manufacturing: "Mining and manufacturing sectors" 
     ([mining, manufacturing]) 
 
-domain mining: "Mining sector" 
+domain mining_domain: "Mining sector" 
     (mining_manufacturing - [manufacturing])
 
-domain sectors_by_region: "Each sector for each region" 
-    (sectors, regions)
+domain mining_domain_2: "Mining sector"
+    (mining_domain)
 
 unit percent: "percent"
 unit percentage_points: "percentage points"
@@ -58,15 +64,15 @@ unit gdp: "gdp" """percent of GDP in the first projection year"""
 unit percent_of_gdp: "percent of GDP" """percent of GDP"""
 
 parameter rho: "Depreciation rate" 
-    domain=regions 
+    domain=(regions_domain)
     unit=percent 
     """Depreciation rate for capital stock in all sectors"""
 
 parameter sigma_df: "Elasticity of substitution between domestic and foreign versions of the same good"
-    domain=sectors_by_region
+    domain=(sectors_by_region)
 
 variable bilateral_imports: "Bilateral imports" 
-    domain=bilateral_by_sector 
+    domain=( bilateral_by_sector )
     unit=gdp
     deviation_unit=percent_of_gdp
     logged=False

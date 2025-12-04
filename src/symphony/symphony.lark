@@ -1,5 +1,17 @@
 SUM: "sum"
 PROD: "prod"
+DOMAIN: "domain"
+MEMBER: "member"
+CATEGORY: "category"
+DIMENSION: "dimension"
+PARAMETER: "parameter"
+VARIABLE: "variable"
+UNIT: "unit"
+DEVIATION_UNIT: "deviation_unit"
+EQUATION: "equation"
+LOGGED: "logged"
+INTERTEMPORAL: "intertemporal"
+
 %import common.CNAME -> NAME
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
@@ -44,14 +56,14 @@ declaration: member_declaration
            | equation_declaration
            | unit_declaration
 
-member_declaration:     "member"     NAME ":" label documentation?
-category_declaration:   "category"   NAME ":" label member_list documentation?
-dimension_declaration:  "dimension"  NAME ":" label dimension_expression documentation?
-domain_declaration:     "domain"     NAME ":" label domain_expression? documentation?
-parameter_declaration:  "parameter"  NAME ":" label domain_expression? unit? documentation?
-variable_declaration:   "variable"   NAME ":" label domain_expression? unit? deviation_unit? logged? intertemporal? documentation?
-unit_declaration:       "unit"       NAME ":" label documentation?
-equation_declaration:   "equation"   NAME? ":" label? domain_expression? equation_expression documentation?
+member_declaration:     MEMBER  NAME ":" label documentation?
+category_declaration:   CATEGORY NAME ":" label member_list documentation?
+dimension_declaration:  DIMENSION NAME ":" label dimension_expression documentation?
+domain_declaration:     DOMAIN NAME ":" label domain_expression? documentation?
+parameter_declaration:  PARAMETER NAME ":" label (DOMAIN EQUALS domain_expression)? unit? documentation?
+variable_declaration:   VARIABLE NAME ":" label (DOMAIN EQUALS domain_expression)? unit? deviation_unit? logged? intertemporal? documentation?
+unit_declaration:       UNIT NAME ":" label documentation?
+equation_declaration:   EQUATION NAME? ":" label? domain_expression? equation_expression documentation?
 
 label: ESCAPED_STRING
 
@@ -62,12 +74,12 @@ name_list: NAME ("," NAME)*
 member_list: LEFT_SQUARE_BRACKET name_list RIGHT_SQUARE_BRACKET
 
 unit_reference: NAME
-unit: "unit" EQUALS unit_reference
-deviation_unit: "deviation_unit" EQUALS unit_reference
+unit: UNIT EQUALS unit_reference
+deviation_unit: DEVIATION_UNIT EQUALS unit_reference
 
-logged: "logged" EQUALS (TRUE | FALSE)
+logged: LOGGED EQUALS (TRUE | FALSE)
 
-intertemporal: "intertemporal" EQUALS (TRUE | FALSE)
+intertemporal: INTERTEMPORAL EQUALS (TRUE | FALSE)
 
 SET_OPERATOR: PLUS | MINUS
 
@@ -87,7 +99,7 @@ domain_term: domain_list tuple_conditions?
 # A domain list is a singleton domain reference or 
 # a list of one or more dimension references or 
 # a list of one or more member references.
-domain_list: name_list | member_list
+domain_list: name_list | member_list 
 
 tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
 

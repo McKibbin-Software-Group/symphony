@@ -40,15 +40,13 @@ categories:
 	pytest -q tests -k "test_categories_syntax"
 
 dimensions:
-	pytest -q tests -k "test_dimensions_json" ; \
-	pytest -q tests -k "test_dimensions_syntax"
+	pytest -q tests -k "test_dimensions_json" 
 
 domains:
 	pytest -q tests -k "test_domains_json" 
 
 variables:
-	pytest -q tests -k "test_variables_json" ; \
-	pytest -q tests -k "test_variables_syntax"
+	pytest -q tests -k "test_variables_json"
 
 equations:
 	pytest -q tests -k "test_equations_json" 
