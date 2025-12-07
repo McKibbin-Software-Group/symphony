@@ -1,0 +1,35 @@
+{
+  "name": "symphony-language-support",
+  "displayName": "Symphony Language Support",
+  "description": "Syntax highlighting for the Symphony modelling language.",
+  "version": "0.0.1",
+  "publisher": "symphony",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "symphony",
+        "aliases": [
+          "Symphony",
+          "symphony"
+        ],
+        "extensions": [
+          ".sym"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "symphony",
+        "scopeName": "source.symphony",
+        "path": "./syntaxes/symphony.tmLanguage.json"
+      }
+    ]
+  }
+}

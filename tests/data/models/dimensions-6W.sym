@@ -1,0 +1,85 @@
+// ---------------------------------------------------------
+// Regions
+// ---------------------------------------------------------
+
+member USA: "United States"
+member JPN: "Japan"
+member EUW: "Western Europe"
+member AUS: "Australia"
+member KOR: "South Korea"
+member ADV: "Other advanced economies"
+member CHN: "China"
+member IND: "India"
+member IDN: "Indonesia"
+member PHL: "Philippines"
+member VNM: "Vietnam"
+member THA: "Thailand"
+member MYS: "Malaysia"
+member PAK: "Pakistan"
+member BGD: "Bangladesh"
+member LKA: "Sri Lanka"
+member ROA: "Rest of Asia"
+member LAM: "Latin America"
+member AFR: "Rest of Africa"
+member MEN: "Middle East and North Africa"
+member ROW: "Rest of World"
+
+// Single category collecting all regions
+category regions: "countries and regions"
+    [USA, JPN, EUW, AUS, KOR, ADV, CHN, IND, IDN, PHL, VNM, THA, MYS, PAK, BGD, LKA, ROA, LAM, AFR, MEN, ROW]
+
+// Derived region dimensions
+dimension notUSA: "all regions except USA" regions - [USA]
+dimension notROW: "all regions except the rest of the world"  regions - [ROW]
+
+// ---------------------------------------------------------
+// Sectors
+// ---------------------------------------------------------
+
+member a01: "energy"
+member a02: "mining"
+member a03: "agriculture"
+member a04: "durable manufacturing"
+member a05: "non-durable manufacturing"
+member a06: "services"
+
+category sectors: "sectors other than the capital-production sectors Y - for firms, and Z - for households"
+    [a01, a02, a03, a04, a05, a06]
+
+dimension sec_std:   "sectors with standard treatment"
+    sectors
+
+dimension sectors_o: "non electricity generation sectors"
+    sectors
+
+dimension sectors_m: "material sectors"
+    sectors_o - sectors_e
+
+dimension sectors_os: "Non electricity generation or distribution sectors" 
+    sec_std
+
+// ---------------------------------------------------------
+// Goods
+// ---------------------------------------------------------
+
+member g01: "energy"
+member g02: "mining"
+member g03: "agriculture"
+member g04: "durable manufacturing"
+member g05: "non-durable manufacturing"
+member g06: "services"
+
+category goods: "ordinary products"
+    [g01, g02, g03, g04, g05, g06]
+
+dimension goods_o: "ordinary goods - those with standard treatment"
+    goods
+
+dimension goods_m:  "material goods"
+    goods_o - goods_e
+
+dimension goods_oc: "Ordinary goods less durable manufacturing - those ordinary goods consumed directly"
+    goods_o - goods_durable
+
+dimension goods_mc: "Material goods less durable manufacturing - those material goods consumed directly"
+    goods_m - goods_durable

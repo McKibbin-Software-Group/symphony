@@ -89,6 +89,7 @@ variable INTN: "Nominal interest rate"
     unit=percent
     deviation_unit=percentage_points
     """One-year government interest rate"""
+    
 variable REMIT: "USD remittances from the USA"
     domain=(not_USA)
     unit=gdp
