@@ -8,6 +8,14 @@ category sectors: "All sectors"
     [energy, mining, agriculture, manufacturing, services] 
 """All sectors"""
 
+member energy_good: "energy good"
+member mining_good: "mining good"
+member agriculture_good: "agriculture good"
+member manufacturing_good: "manufacturing good"
+member services_good: "services good"
+category goods: "All goods" 
+    [energy_good, mining_good, agriculture_good, manufacturing_good, services_good]
+
 member USA: "USA"
 member AUS: "Australia"
 member ROW: "Rest of World"
@@ -50,7 +58,7 @@ domain sectors_by_region: "Each sector for each region"
     (sectors, regions)
 
 domain mining_manufacturing: "Mining and manufacturing sectors" 
-    ([mining, manufacturing]) 
+    (sectors - [energy, services, agriculture]) 
 
 domain mining_domain: "Mining sector" 
     (mining_manufacturing - [manufacturing])
@@ -151,10 +159,10 @@ variable REMITU: "USD remittances to the USA"
     """
 
 equation: "Sum of investment across sectors for sector investment"
-    INVP = sum(sectors|INV[sectors=1])
+    INVP = sum(sectors|INV(agg=sectors:1))
 
 equation: "Global total sector investment"
-    INVPW = sum(regions| sum(sectors|INV[sectors=1,regions=2]))
+    INVPW = sum(regions| sum(sectors|INV(agg=sectors:1,regions:2)))
 
 equation: "Total investment aggregation"
     INVT = INVP + INVY + INVZ
@@ -164,7 +172,7 @@ equation: "Total investment aggregation"
     """
 
 equation: "Ensure global remittances sum to zero"
-    REMITU = - sum(not_USA | REMIT[not_USA=1])
+    REMITU = - sum(not_USA | REMIT(agg=not_USA:1))
     """
     USA remittances are the negative sum of remittances by other regions.
     """
@@ -186,4 +194,31 @@ variable NEER: "Nominal effective exchange rate (foreign currency per local curr
     """Nominal effective exchange rate index"""
 
 equation: "Nominal effective exchange rate"
-    NEER = - sum(regions | eer_weight*(EXCH[regions=1] - EXCH) )
+    NEER = - sum(origins | eer_weight(agg=origins:1)*(EXCH(agg=origins:1) - EXCH) )
+
+variable PIM: "landed local-currency prices of individual imports"
+    domain=(goods, destinations, origins)
+    unit=index
+    deviation_unit=percent
+    logged=True
+
+variable PRX: "price of exports at source"
+    domain=(goods, origins)
+    unit=index
+    deviation_unit=percent
+    logged=True
+    """price of exports at source in source local currency unit"""
+
+variable EXCH: "nominal exchange rate (USD per local currency unit)"
+    domain=(regions)
+    unit=index
+    deviation_unit=percent
+    logged=True
+    """Nominal exchange rate defined as US dollar per local currency unit"""
+
+equation: "exchange rate conversion of source price to landed destination price"
+    PIM = PRX(dim=origins:2) + EXCH(dim=origins:1) - EXCH(dim=destinations:1)
+    """
+    This is an example of the syntax used to match up the dimensions from the LHS variable
+    to the dimensions of the RHS variables.
+    """

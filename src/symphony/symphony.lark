@@ -125,9 +125,13 @@ lhs_wrapped_variable: lhs_variable_reference
 
 lhs_variable_reference: NAME [domain_expression]
 
-rhs_variable_reference: NAME ( "[" tuple_position_list "]" )?
+rhs_variable_reference: NAME ["(" rhs_variable_conditional ("," rhs_variable_conditional)* ")" ]
+?rhs_variable_conditional: rhs_domain_restriction | rhs_dimension_matches | rhs_aggregation_matches
+rhs_domain_restriction: "dom" "=" domain_expression
+rhs_dimension_matches: "dim" "=" tuple_position_list
+rhs_aggregation_matches: "agg" "=" tuple_position_list
 
-tuple_position_list: dimension_reference "=" TUPLE_POSITION ("," dimension_reference "=" TUPLE_POSITION)*
+tuple_position_list: dimension_reference ":" TUPLE_POSITION ("," dimension_reference ":" TUPLE_POSITION)*
 
 // Root of arithmetic expression
 ?expression: sum_expression

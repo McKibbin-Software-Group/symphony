@@ -50,7 +50,7 @@ domain sectors_by_region: "Each sector for each region"
     (sectors, regions)
 
 domain mining_manufacturing: "Mining and manufacturing sectors" 
-    ([mining, manufacturing]) 
+    (sectors - [energy, services, agriculture]) 
 
 domain mining_domain: "Mining sector" 
     (mining_manufacturing - [manufacturing])
