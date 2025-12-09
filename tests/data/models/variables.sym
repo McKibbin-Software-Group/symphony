@@ -24,7 +24,7 @@ dimension not_USA: "All regions except the USA"
 dimension origins: "Origin regions" 
     regions 
 
-dimension destinations: "Destination regions" 
+dimension destinations: "Destination regions"
     regions
 
 domain regions_domain: "All regions" 

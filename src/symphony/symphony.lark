@@ -48,7 +48,7 @@ TRIPLE_STRING: /\"\"\"(.|\n|\r)*?\"\"\"/
 
 start: declaration+
 
-declaration: member_declaration
+?declaration: member_declaration
            | category_declaration
            | dimension_declaration
            | domain_declaration
@@ -72,7 +72,7 @@ documentation: TRIPLE_STRING
 
 name_list: NAME ("," NAME)*
 
-member_list: LEFT_SQUARE_BRACKET name_list RIGHT_SQUARE_BRACKET
+member_list: "[" name_list "]"
 
 unit: UNIT EQUALS unit_reference 
 
