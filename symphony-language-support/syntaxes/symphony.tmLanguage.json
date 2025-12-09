@@ -28,10 +28,6 @@
     "comments": {
       "patterns": [
         {
-          "name": "comment.line.number-sign.symphony",
-          "match": "#.*$"
-        },
-        {
           "name": "comment.line.double-slash.symphony",
           "match": "//.*$"
         }

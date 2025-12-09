@@ -13,8 +13,8 @@ FILE ?= set-1.sym
 FILENAME = model-${FILE}
 sym:
 	@echo "Running SYM processor on $(FILENAME).sym ..." ; \
-	cd sym ;\
-	rm -f *.html && rm -f *.csv && rm -f *.lis && rm -f *.py ;\
+	cd sym ; \
+	rm -f *.html && rm -f *.csv && rm -f *.lis && rm -f *.py ; \
 	$(SYM) -python $(FILENAME).sym result_$(FILENAME).py ;\
 	cd ..
 

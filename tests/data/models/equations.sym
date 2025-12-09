@@ -58,10 +58,12 @@ domain mining_domain: "Mining sector"
 domain mining_domain_2: "Mining sector"
     (mining_domain)
 
+unit index: "index" """index with the base year equal to 100"""
 unit percent: "percent"
 unit percentage_points: "percentage points"
 unit gdp: "gdp" """percent of GDP in the first projection year"""
 unit percent_of_gdp: "percent of GDP" """percent of GDP"""
+unit usgdp: "US GDP" """percent of US GDP"""
 
 parameter rho: "Depreciation rate" 
     domain=(regions_domain)
@@ -89,7 +91,51 @@ variable INTN: "Nominal interest rate"
     unit=percent
     deviation_unit=percentage_points
     """One-year government interest rate"""
-    
+
+variable INV: "sector investment"
+    domain=(sectors, regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+    """
+    Investment by those sectors that are not household or raw capital producing sectors.
+    """
+
+variable INVP: "Total sector investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable REXN: "Real exchange rate"
+    domain=(regions)
+    unit=index
+    deviation_unit=percentage_points
+    logged=True
+    """Real exchange rate index (US dollar per local currency unit)"""
+
+variable INVPW: "Global total sector investment"
+    unit=usgdp
+    deviation_unit=percent
+
+variable INVY: "Total raw capital sector investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable INVZ: "Total household capital sector investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable INVT: "Total investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
 variable REMIT: "USD remittances from the USA"
     domain=(not_USA)
     unit=gdp
@@ -97,12 +143,18 @@ variable REMIT: "USD remittances from the USA"
     """Wealth sent by households in the USA to households in another regions"""
 
 variable REMITU: "USD remittances to the USA"
-    domain=(USA)
+    domain=([USA])
     unit=gdp
     deviation_unit=LCU_Billions
     """
     Wealth sent by households in other regions to the USA
     """
+
+equation: "Sum of investment across sectors for sector investment"
+    INVP = sum(sectors|INV[sectors=1])
+
+equation: "Global total sector investment"
+    INVPW = sum(regions| sum(sectors|INV[sectors=1,regions=2]))
 
 equation: "Total investment aggregation"
     INVT = INVP + INVY + INVZ
@@ -111,11 +163,27 @@ equation: "Total investment aggregation"
     including the sectors that produce raw and household capital
     """
 
-equation: "Sum of investment across sectors for sector investment"
-    INVP = sum(sectors,1|INV)
-
 equation: "Ensure global remittances sum to zero"
-    REMITU = - sum(not_USA| REMIT)
+    REMITU = - sum(not_USA | REMIT[not_USA=1])
     """
     USA remittances are the negative sum of remittances by other regions.
     """
+
+parameter eer_weight: "Weights for nominal effective exchange rate"
+    domain=(origins_to_destinations)
+    """Weights for nominal effective exchange rate calculation"""
+
+variable EXCH: "nominal exchange rate (USD per local currency unit)"
+    domain=(regions)
+    deviation_unit=percentage_points
+    logged=True
+    """Nominal exchange rate defined as local currency units per US dollar"""
+
+variable NEER: "Nominal effective exchange rate (foreign currency per local currency unit)"
+    domain=(regions)
+    deviation_unit=percentage_points
+    logged=True
+    """Nominal effective exchange rate index"""
+
+equation: "Nominal effective exchange rate"
+    NEER = - sum(regions | eer_weight*(EXCH[regions=1] - EXCH) )

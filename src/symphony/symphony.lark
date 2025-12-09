@@ -101,9 +101,9 @@ domain_expression: LEFT_ROUND_BRACKET domain_term (set_operator domain_term)* RI
 
 domain_term: domain_list tuple_conditions?
 
-# A domain list is a singleton domain reference or 
-# a list of one or more dimension references or 
-# a list of one or more member references.
+// A domain list is a singleton domain reference or 
+// a list of one or more dimension references or 
+// a list of one or more member references.
 domain_list: name_list | member_list 
 
 tuple_conditions: CONDITIONAL tuple_condition ("," tuple_condition)*
@@ -124,7 +124,10 @@ lhs_wrapped_variable: lhs_variable_reference
                      | lhs_lead 
 
 lhs_variable_reference: NAME [domain_expression]
-rhs_variable_reference: NAME
+
+rhs_variable_reference: NAME ( "[" tuple_position_list "]" )?
+
+tuple_position_list: dimension_reference "=" TUPLE_POSITION ("," dimension_reference "=" TUPLE_POSITION)*
 
 // Root of arithmetic expression
 ?expression: sum_expression
@@ -177,7 +180,5 @@ lhs_expectation: "E" "(" lhs_wrapped_variable ")"
 // tuple position within a domain.
 // ---------------------------------------------------------
 
-index_specification: dimension_reference ["," TUPLE_POSITION]
-
-summation: SUM "(" index_specification "|" sum_expression ")"
-product: PROD "(" index_specification "|" sum_expression ")"
+summation: SUM "(" dimension_reference "|" sum_expression ")"
+product: PROD "(" dimension_reference "|" sum_expression ")"
