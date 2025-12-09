@@ -97,9 +97,9 @@ dimension_term: member_list
 dimension_reference: NAME
 
 // Domains
-domain_expression: LEFT_ROUND_BRACKET domain_term (set_operator domain_term)* RIGHT_ROUND_BRACKET
+domain_expression: "(" domain_term (set_operator domain_term)* ")"
 
-domain_term: domain_list tuple_conditions?
+domain_term: domain_list [ tuple_conditions ]
 
 // A domain list is a singleton domain reference or 
 // a list of one or more dimension references or 
