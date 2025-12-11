@@ -22,6 +22,9 @@ class TokenisingTransformer(Transformer):
         assert isinstance(file_path, Path), "file_path must be an instance of pathlib.Path"
         self.file_path = file_path
 
+        # Track the files that are included by the Symphony file being transformed.
+        self.included_files: set[Path] = set()
+
     @staticmethod
     def _position(file_path: Path, token_or_meta: Any) -> SourcePosition:
         line = getattr(token_or_meta, "line", None)
@@ -72,6 +75,7 @@ class TokenisingTransformer(Transformer):
         position = self._position(file_path=self.file_path, token_or_meta=meta)
         file_path: Path = children[0]
         assert file_path.exists(), f"Included file does not exist: {file_path} (included at {position} in {self.file_path})"
+        self.included_files.add(file_path)
         return self.__default__(data="include_declaration", children=children, meta=meta)
 
     def INCLUDE(self, token: Token) -> Any:
