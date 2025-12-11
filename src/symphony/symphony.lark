@@ -1,9 +1,10 @@
 SUM: "sum"
 PROD: "prod"
-DOMAIN: "domain"
+INCLUDE: "include"
 MEMBER: "member"
 CATEGORY: "category"
 DIMENSION: "dimension"
+DOMAIN: "domain"
 PARAMETER: "parameter"
 VARIABLE: "variable"
 UNIT: "unit"
@@ -21,6 +22,8 @@ EQUALS: "="
 NOT_EQUALS: "!="
 PLUS: "+"
 MINUS: "-"
+MULTIPLY: "*"
+DIVIDE: "/"
 
 TRUE: "True" | "true"
 FALSE: "False" | "false"
@@ -38,17 +41,18 @@ boolean: TRUE | FALSE
 
 // Line comments (allow both shell-style and C++-style comments)
 %ignore /#[^\n]*/
-%ignore /\/\/[^\n]*/
 
 // Triple-quoted documentation string (non-greedy, spans lines)
 TRIPLE_STRING: /\"\"\"(.|\n|\r)*?\"\"\"/
 
+FILE_PATH: ESCAPED_STRING
 
 // ---------- Parser ----------
 
 start: declaration+
 
-?declaration: member_declaration
+?declaration: include_declaration
+           | member_declaration
            | category_declaration
            | dimension_declaration
            | domain_declaration
@@ -56,6 +60,8 @@ start: declaration+
            | variable_declaration
            | equation_declaration
            | unit_declaration
+
+include_declaration: INCLUDE FILE_PATH
 
 member_declaration:     MEMBER  NAME ":" label documentation?
 category_declaration:   CATEGORY NAME ":" label member_list documentation?
@@ -137,25 +143,24 @@ tuple_position_list: dimension_reference ":" TUPLE_POSITION ("," dimension_refer
 ?expression: sum_expression
 
 // Addition and subtraction (left associative)
-sum_expression: product_expression ((PLUS | MINUS) product_expression)*
+?sum_expression: product_expression ((PLUS | MINUS) product_expression)*
 
 // Multiplication and division (left associative)
-product_expression: power_expression (("*" | "/") power_expression)*
+?product_expression: power_expression ((MULTIPLY | DIVIDE) power_expression)*
 
 // Exponentiation (right associative)
-power_expression: unary_expression
+?power_expression: unary_expression
                 | unary_expression "^" power_expression
-                | unary_expression "**" power_expression
 
 // Unary operators
-unary_expression: atom
+?unary_expression: atom
                 | PLUS unary_expression
                 | MINUS unary_expression
 
 // ---------------------------------------------------------
 // Atomic expressions: constants, names, functions, brackets
 // ---------------------------------------------------------
-atom: NUMBER
+?atom: NUMBER
     | rhs_variable_reference
     | function
     | rhs_expectation

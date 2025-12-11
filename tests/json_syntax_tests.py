@@ -27,3 +27,7 @@ def test_variables_json(variables_parse_tree: Tree, results_folder: Path):
 def test_equations_json(equations_parse_tree: Tree, results_folder: Path):
     with open(results_folder / "equations_parse_tree.json", "w") as f:
         json.dump(TokenisingTransformer().transform(equations_parse_tree), f, indent=2)
+
+def test_modules_json(modules_parse_tree: Tree, results_folder: Path):
+    with open(results_folder / "modules_parse_tree.json", "w") as f:
+        json.dump(TokenisingTransformer().transform(modules_parse_tree), f, indent=2)

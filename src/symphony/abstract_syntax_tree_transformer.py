@@ -409,7 +409,12 @@ def build_parser(grammar_file: Path) -> Lark:
     """
     Build a Lark parser from the given grammar file.
     """
-    return Lark.open(grammar_file, parser="lalr", propagate_positions=True)
+    return Lark.open(
+        grammar_file, 
+        parser="lalr", 
+        propagate_positions=True, 
+        maybe_placeholders=False,
+    )
 
 def parse_declarations(parser: Lark, text: str) -> Model:
     """

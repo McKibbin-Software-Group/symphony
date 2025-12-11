@@ -51,6 +51,10 @@ def equations_file(models_folder: Path) -> Path:
     return models_folder / "equations.sym"
 
 @pytest.fixture
+def modules_file(models_folder: Path) -> Path:
+    return models_folder / "modules.sym"
+
+@pytest.fixture
 def symphony_grammar_file(models_folder: Path) -> Path:
 
     return resources.files("symphony").joinpath("symphony.lark")
@@ -107,7 +111,9 @@ def variables_parse_tree(parser: Lark, variables_file: Path) -> Tree:
 def equations_parse_tree(parser: Lark, equations_file: Path) -> Tree:
     return parse_tree(parser, equations_file)
 
-
+@pytest.fixture
+def modules_parse_tree(parser: Lark, modules_file: Path) -> Tree:
+    return parse_tree(parser, modules_file)
 
 @pytest.fixture
 def members_model(parser: Lark, members_file: Path) -> Model:
@@ -132,3 +138,7 @@ def variables_model(parser: Lark, variables_file: Path) -> Model:
 @pytest.fixture
 def equations_model(parser: Lark, equations_file: Path) -> Model:
     return model(parser, equations_file)
+
+@pytest.fixture
+def modules_model(parser: Lark, modules_file: Path) -> Model:
+    return model(parser, modules_file)

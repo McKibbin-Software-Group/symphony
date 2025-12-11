@@ -4,6 +4,7 @@
   "description": "Syntax highlighting for the Symphony modelling language.",
   "version": "0.0.1",
   "publisher": "symphony",
+  "repository": "https://github.com/McKibbin-Software-Group/symphony.git",
   "engines": {
     "vscode": "^1.80.0"
   },

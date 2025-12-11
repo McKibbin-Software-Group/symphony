@@ -51,6 +51,9 @@ variables:
 equations:
 	pytest -q tests -k "test_equations_json" 
 
+modules:
+	pytest -q tests -k "test_modules_json" 
+
 listtests:
 	py.test tests -q --collect-only	
 
@@ -99,4 +102,4 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 # List the targets that are not related to specific file timestamps
-.PHONY: push sym run format whl pyc build doco tests test test-one listtests init members categories dimensions domains variables clean
+.PHONY: push sym run format whl pyc build doco tests test test-one listtests init members categories dimensions domains variables equations modules clean
