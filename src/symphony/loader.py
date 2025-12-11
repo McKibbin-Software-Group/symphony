@@ -136,8 +136,8 @@ class IncludeTransformer(BaseTransformer):
     def included_files(self) -> set[Path]:
         """
         ### Overview
-        
-        Track the files that are included by the Symphony file being transformed.
+
+        Set of the files that are included by the Symphony file being transformed.
         """
         if not hasattr(self, "_included_files"):
             self._included_files = set()
