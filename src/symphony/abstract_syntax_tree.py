@@ -2,20 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, is_dataclass, fields
 from enum import Enum
+from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
+from symphony import SourcePosition
 
 # Abstract Syntax Tree definitions and printers
 
 # ========= Core AST node types =========
-
-
-@dataclass(frozen=True)
-class SourcePosition:
-    """
-    1-based line/column location in the source file.
-    """
-    line: int
-    column: int
 
 
 class DeclarationType(str, Enum):

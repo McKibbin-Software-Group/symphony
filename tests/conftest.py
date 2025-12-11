@@ -1,11 +1,10 @@
 import logging
-from lark import Lark, Tree, UnexpectedInput
+from lark import UnexpectedInput
 import pytest
 from pathlib import Path
-from importlib import resources
+from symphony import SymphonyTree, symphony_parser
 from symphony.abstract_syntax_tree import Model
 from symphony.logging import print_parse_error
-from symphony.processor import build_parser
 from symphony.abstract_syntax_tree_transformer import parse_declarations
 
 @pytest.fixture
@@ -46,75 +45,60 @@ def variables_file(models_folder: Path) -> Path:
 def equations_file(models_folder: Path) -> Path:
     return models_folder / "equations.sym"
 
-@pytest.fixture
-def symphony_grammar_file(models_folder: Path) -> Path:
-
-    return resources.files("symphony").joinpath("symphony.lark")
-
-@pytest.fixture
-def parser(symphony_grammar_file: Path) -> Lark:
-
-    try:
-        with resources.as_file(symphony_grammar_file) as grammar_path:
-            return build_parser(grammar_path)
-    except Exception as exception:
-        assert False, f"Failed to build parser from bundled grammar {symphony_grammar_file}: {exception}\n"
-
 def declaration(model_file:Path) -> str:
     try:
         return model_file.read_text(encoding="utf-8")
     except OSError as exception:
         assert False, f"Failed to read input file {model_file}: {exception}\n"
 
-def model(parser: Lark, model_file: Path) -> Model:
+def model(model_file: Path) -> Model:
     try:
-        return parse_declarations(parser, declaration(model_file))
+        return parse_declarations(declaration(model_file))
     except UnexpectedInput as err:
         print_parse_error(err, declaration(model_file), model_file)
         assert False, f"Failed to parse model from {model_file}\n"
 
-def parse_tree(parser: Lark, model_file: Path):
+def parse_tree(symphony_file: Path) -> SymphonyTree:
     try:
-        return parser.parse(declaration(model_file))
+        return SymphonyTree(symphony_parser().parse(declaration(symphony_file)), symphony_file)
     except UnexpectedInput as err:
-        assert False, f"Failed to parse model from {model_file}\n"
+        assert False, f"Failed to parse Lark Tree from {symphony_file}\n"
 
 @pytest.fixture
-def categories_parse_tree(parser: Lark, categories_file: Path) -> Tree:
-    return parse_tree(parser, categories_file)
+def categories_parse_tree(categories_file: Path) -> SymphonyTree:
+    return parse_tree(categories_file)
 
 @pytest.fixture
-def dimensions_parse_tree(parser: Lark, dimensions_file: Path) -> Tree:
-    return parse_tree(parser, dimensions_file)
+def dimensions_parse_tree(dimensions_file: Path) -> SymphonyTree:
+    return parse_tree(dimensions_file)
 
 @pytest.fixture
-def domains_parse_tree(parser: Lark, domains_file: Path) -> Tree:
-    return parse_tree(parser, domains_file)
+def domains_parse_tree(domains_file: Path) -> SymphonyTree:
+    return parse_tree(domains_file)
 
 @pytest.fixture
-def variables_parse_tree(parser: Lark, variables_file: Path) -> Tree:
-    return parse_tree(parser, variables_file)
+def variables_parse_tree(variables_file: Path) -> SymphonyTree:
+    return parse_tree(variables_file)
 
 @pytest.fixture
-def equations_parse_tree(parser: Lark, equations_file: Path) -> Tree:
-    return parse_tree(parser, equations_file)
+def equations_parse_tree(equations_file: Path) -> SymphonyTree:
+    return parse_tree(equations_file)
 
 @pytest.fixture
-def categories_model(parser: Lark, categories_file: Path) -> Model:
-    return model(parser, categories_file)
+def categories_model(categories_file: Path) -> Model:
+    return model(categories_file)
 
 @pytest.fixture
-def dimensions_model(parser: Lark, dimensions_file: Path) -> Model:
-    return model(parser, dimensions_file)
+def dimensions_model(dimensions_file: Path) -> Model:
+    return model(dimensions_file)
+@pytest.fixture
+def domains_model(domains_file: Path) -> Model:
+    return model(domains_file)
 
 @pytest.fixture
-def domains_model(parser: Lark, domains_file: Path) -> Model:
-    return model(parser, domains_file)
+def variables_model(variables_file: Path) -> Model:
+    return model(variables_file)
 
 @pytest.fixture
-def variables_model(parser: Lark, variables_file: Path) -> Model:
-    return model(parser, variables_file)
-
-@pytest.fixture
-def equations_model(parser: Lark, equations_file: Path) -> Model:
-    return model(parser, equations_file)
+def equations_model(equations_file: Path) -> Model:
+    return model(equations_file)

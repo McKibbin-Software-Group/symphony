@@ -8,6 +8,8 @@ from typing import List, Optional
 
 from lark import UnexpectedInput
 
+from symphony import symphony_parser
+
 from symphony.abstract_syntax_tree import (
     Model,
 )
@@ -18,7 +20,7 @@ from symphony.model_depictions import (
 )
 
 from symphony.logging import configure_logging, print_parse_error
-from symphony.abstract_syntax_tree_transformer import build_parser, parse_declarations
+from symphony.abstract_syntax_tree_transformer import parse_declarations
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -73,15 +75,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     configure_logging(args.log_level)
 
-    grammar_resource = resources.files("symphony").joinpath("symphony.lark")
-
-    try:
-        with resources.as_file(grammar_resource) as grammar_path:
-            parser = build_parser(grammar_path)
-    except Exception as exc:
-        sys.stderr.write(f"Failed to build parser from bundled grammar {grammar_resource}: {exc}\n")
-        return 1
-
     try:
         text = args.input.read_text(encoding="utf-8")
     except OSError as exc:
@@ -89,7 +82,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     try:
-        program: Model = parse_declarations(parser, text)
+        program: Model = parse_declarations(text)
     except UnexpectedInput as err:
         print_parse_error(err, text, args.input)
         return 1

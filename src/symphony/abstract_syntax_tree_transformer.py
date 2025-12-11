@@ -7,6 +7,8 @@ from typing import Any, Iterable, List, Optional, Tuple
 from lark import Lark, Transformer, Token, Tree, v_args
 import ast
 
+from symphony import SourcePosition, symphony_parser
+
 from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
     DeclarationNode,
@@ -21,7 +23,6 @@ from symphony.abstract_syntax_tree import (
     MemberDeclaration,
     ParameterDeclaration,
     Model,
-    SourcePosition,
     UnitDeclaration,
     VariableDeclaration,
 )
@@ -405,21 +406,10 @@ class AbstractSyntaxTreeTransformer(Transformer):
 
 # ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------
 
-def build_parser(grammar_file: Path) -> Lark:
-    """
-    Build a Lark parser from the given grammar file.
-    """
-    return Lark.open(
-        grammar_file, 
-        parser="lalr", 
-        propagate_positions=True, 
-        maybe_placeholders=False,
-    )
-
-def parse_declarations(parser: Lark, text: str) -> Model:
+def parse_declarations(text: str) -> Model:
     """
     Parse source text into a Program AST using the Pass 1 transformer.
     """
-    tree: Tree = parser.parse(text)
+    tree: Tree = symphony_parser().parse(text)
     program: Model = AbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
     return program
