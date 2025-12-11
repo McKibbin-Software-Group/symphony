@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 from symphony import SymphonyTree, symphony_parser
 from symphony.abstract_syntax_tree import Model
+from symphony.loader import Loader
 from symphony.logging import print_parse_error
 from symphony.abstract_syntax_tree_transformer import parse_declarations
 
@@ -102,3 +103,7 @@ def variables_model(variables_file: Path) -> Model:
 @pytest.fixture
 def equations_model(equations_file: Path) -> Model:
     return model(equations_file)
+
+@pytest.fixture
+def loader() -> Loader:
+    return Loader()

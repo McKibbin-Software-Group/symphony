@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 from typing import Dict
 from lark import UnexpectedInput
@@ -18,6 +19,7 @@ class Model:
     modules: Dict[Path, Module]
 
 class Loader:
+
     def __init__(self) -> None:
 
         self.parser = symphony_parser()
@@ -37,7 +39,7 @@ class Loader:
 
     def load_model(self, root_file_path: Path) -> Model:
         root_file_path = root_file_path.resolve()
-        self._load_recursive(root_file_path, set())
+        self._load_recursive(root_file_path)
 
         return Model(
             modules=self.modules_by_path,
@@ -51,7 +53,9 @@ class Loader:
         if file_path in self.modules_by_path:
             return
 
-        symphony_tree: SymphonyTree = self.parse_tree(file_path=file_path)
+        logging.info(f"Loading Symphony file: {file_path}")
+
+        symphony_tree: SymphonyTree = self.parse_tree(symphony_file_path=file_path)
         transformer: TokenisingTransformer = TokenisingTransformer(file_path=file_path)
         transformer.transform(symphony_tree.parse_tree)
         module = Module(

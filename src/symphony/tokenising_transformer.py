@@ -22,8 +22,14 @@ class TokenisingTransformer(Transformer):
         assert isinstance(file_path, Path), "file_path must be an instance of pathlib.Path"
         self.file_path = file_path
 
-        # Track the files that are included by the Symphony file being transformed.
-        self.included_files: set[Path] = set()
+    @property
+    def included_files(self) -> set[Path]:
+        """
+        Track the files that are included by the Symphony file being transformed.
+        """
+        if not hasattr(self, "_included_files"):
+            self._included_files = set()
+        return self._included_files
 
     @staticmethod
     def _position(file_path: Path, token_or_meta: Any) -> SourcePosition:
