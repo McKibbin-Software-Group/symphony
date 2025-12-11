@@ -27,10 +27,6 @@ def models_folder(data_folder: Path) -> Path:
     return data_folder / "models"
 
 @pytest.fixture
-def members_file(models_folder: Path) -> Path:
-    return models_folder / "members.sym"
-
-@pytest.fixture
 def categories_file(models_folder: Path) -> Path:
     return models_folder / "categories.sym"
 
@@ -49,10 +45,6 @@ def variables_file(models_folder: Path) -> Path:
 @pytest.fixture
 def equations_file(models_folder: Path) -> Path:
     return models_folder / "equations.sym"
-
-@pytest.fixture
-def modules_file(models_folder: Path) -> Path:
-    return models_folder / "modules.sym"
 
 @pytest.fixture
 def symphony_grammar_file(models_folder: Path) -> Path:
@@ -88,10 +80,6 @@ def parse_tree(parser: Lark, model_file: Path):
         assert False, f"Failed to parse model from {model_file}\n"
 
 @pytest.fixture
-def members_parse_tree(parser: Lark, members_file: Path) -> Tree:
-    return parse_tree(parser, members_file)
-
-@pytest.fixture
 def categories_parse_tree(parser: Lark, categories_file: Path) -> Tree:
     return parse_tree(parser, categories_file)
 
@@ -112,14 +100,6 @@ def equations_parse_tree(parser: Lark, equations_file: Path) -> Tree:
     return parse_tree(parser, equations_file)
 
 @pytest.fixture
-def modules_parse_tree(parser: Lark, modules_file: Path) -> Tree:
-    return parse_tree(parser, modules_file)
-
-@pytest.fixture
-def members_model(parser: Lark, members_file: Path) -> Model:
-    return model(parser, members_file)
-
-@pytest.fixture
 def categories_model(parser: Lark, categories_file: Path) -> Model:
     return model(parser, categories_file)
 
@@ -138,7 +118,3 @@ def variables_model(parser: Lark, variables_file: Path) -> Model:
 @pytest.fixture
 def equations_model(parser: Lark, equations_file: Path) -> Model:
     return model(parser, equations_file)
-
-@pytest.fixture
-def modules_model(parser: Lark, modules_file: Path) -> Model:
-    return model(parser, modules_file)

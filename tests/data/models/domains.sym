@@ -1,31 +1,4 @@
-member energy: "energy"
-member mining: "mining"
-member agriculture: "agriculture"
-member manufacturing: "manufacturing"
-member services: "services"
-
-category sectors: "All sectors" 
-    [energy, mining, agriculture, manufacturing, services] 
-"""All sectors"""
-
-member USA: "USA"
-member AUS: "Australia"
-member ROW: "Rest of World"
-
-category regions: "All regions of the World" [
-    USA,
-    AUS,
-    ROW
-]
-
-dimension not_USA: "All regions except the USA"
-    regions - [USA]
-    
-dimension origins: "Origin regions" 
-    regions 
-
-dimension destinations: "Destination regions" 
-    regions
+include "dimensions.sym"
 
 domain regions_domain: "All regions" 
     (regions) 

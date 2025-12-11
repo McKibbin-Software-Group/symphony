@@ -1,67 +1,5 @@
-member energy: "energy"
-member mining: "mining"
-member agriculture: "agriculture"
-member manufacturing: "manufacturing"
-member services: "services"
-
-category sectors: "All sectors" 
-    [energy, mining, agriculture, manufacturing, services] 
-"""All sectors"""
-
-member USA: "USA"
-member AUS: "Australia"
-member ROW: "Rest of World"
-
-category regions: "All regions of the World" [
-    USA,
-    AUS,
-    ROW
-]
-
-dimension not_USA: "All regions except the USA"
-    regions - [USA]
-    
-dimension origins: "Origin regions" 
-    regions 
-
-dimension destinations: "Destination regions"
-    regions
-
-domain regions_domain: "All regions" 
-    (regions) 
-"""All regions"""
-
-domain product_of_colours_and_regions: "All colours for all regions" 
-    (colours, regions) 
-"""All colours for all regions"""
-
-domain bilateral_trade: "Bilateral trade flows" 
-    (origins, destinations | 1 != 2) 
-"""Bilateral trade flows"""
-
-domain origins_to_destinations: "trade flows"
-    (origins,destinations - origins,destinations|1=2)
-
-domain bilateral_trade_by_sector: "Bilateral trade flows by sector" 
-    (sectors, origins, destinations | 2 != 3) 
-"""Bilateral trade flows by sector"""
-
-domain sectors_by_region: "Each sector for each region" 
-    (sectors, regions)
-
-domain mining_manufacturing: "Mining and manufacturing sectors" 
-    ([mining, manufacturing]) 
-
-domain mining_domain: "Mining sector" 
-    (mining_manufacturing - [manufacturing])
-
-domain mining_domain_2: "Mining sector"
-    (mining_domain)
-
-unit percent: "percent"
-unit percentage_points: "percentage points"
-unit gdp: "gdp" """percent of GDP in the first projection year"""
-unit percent_of_gdp: "percent of GDP" """percent of GDP"""
+include "domains.sym"
+include "units.sym"
 
 parameter rho: "Depreciation rate" 
     domain=(regions_domain)
@@ -89,3 +27,98 @@ variable INTN: "Nominal interest rate"
     unit=percent
     deviation_unit=percentage_points
     """One-year government interest rate"""
+
+variable INV: "sector investment"
+    domain=(sectors, regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+    """
+    Investment by those sectors that are not household or raw capital producing sectors.
+    """
+
+variable INVP: "Total sector investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable REXN: "Real exchange rate"
+    domain=(regions)
+    unit=index
+    deviation_unit=percentage_points
+    logged=True
+    """Real exchange rate index (US dollar per local currency unit)"""
+
+variable INVPW: "Global total sector investment"
+    unit=usgdp
+    deviation_unit=percent
+
+variable INVY: "Total raw capital sector investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable INVZ: "Total household capital sector investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable INVT: "Total investment"
+    domain=(regions)
+    unit=gdp
+    deviation_unit=percent_of_gdp
+    logged=False
+
+variable REMIT: "USD remittances from the USA"
+    domain=(not_USA)
+    unit=gdp
+    deviation_unit=LCU_Billions
+    """Wealth sent by households in the USA to households in another regions"""
+
+variable REMITU: "USD remittances to the USA"
+    domain=([USA])
+    unit=gdp
+    deviation_unit=LCU_Billions
+    """
+    Wealth sent by households in other regions to the USA
+    """
+
+parameter eer_weight: "Weights for nominal effective exchange rate"
+    domain=(origins_to_destinations)
+    """Weights for nominal effective exchange rate calculation"""
+
+variable EXCH: "nominal exchange rate (USD per local currency unit)"
+    domain=(regions)
+    deviation_unit=percentage_points
+    logged=True
+    """Nominal exchange rate defined as local currency units per US dollar"""
+
+variable NEER: "Nominal effective exchange rate (foreign currency per local currency unit)"
+    domain=(regions)
+    deviation_unit=percentage_points
+    logged=True
+    """Nominal effective exchange rate index"""
+
+variable PIM: "landed local-currency prices of individual imports"
+    domain=(goods, destinations, origins)
+    unit=index
+    deviation_unit=percent
+    logged=True
+
+variable PRX: "price of exports at source"
+    domain=(goods, origins)
+    unit=index
+    deviation_unit=percent
+    logged=True
+    """price of exports at source in source local currency unit"""
+
+variable EXCH: "nominal exchange rate (USD per local currency unit)"
+    domain=(regions)
+    unit=index
+    deviation_unit=percent
+    logged=True
+    """Nominal exchange rate defined as US dollar per local currency unit"""
+

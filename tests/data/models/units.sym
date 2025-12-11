@@ -1,0 +1,15 @@
+unit index: "index" 
+    """index with the base year equal to 100"""
+
+unit percent: "percent"
+
+unit percentage_points: "percentage points"
+
+unit gdp: "gdp"
+    """percent of GDP in the first projection year"""
+
+unit percent_of_gdp: "percent of GDP"
+"""percent of GDP"""
+
+unit usgdp: "US GDP" 
+    """percent of US GDP"""

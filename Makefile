@@ -31,13 +31,8 @@ TEST ?= test_members_syntax
 test:
 	pytest -q tests -k "$(TEST)"
 
-members:
-	pytest -q tests -k "test_members_json" ;  \
-	pytest -q tests -k "test_members_syntax"
-
 categories:
-	pytest -q tests -k "test_categories_json" ; \
-	pytest -q tests -k "test_categories_syntax"
+	pytest -q tests -k "test_categories_json"
 
 dimensions:
 	pytest -q tests -k "test_dimensions_json" 
@@ -51,8 +46,6 @@ variables:
 equations:
 	pytest -q tests -k "test_equations_json" 
 
-modules:
-	pytest -q tests -k "test_modules_json" 
 
 listtests:
 	py.test tests -q --collect-only	
@@ -102,4 +95,4 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 # List the targets that are not related to specific file timestamps
-.PHONY: push sym run format whl pyc build doco tests test test-one listtests init members categories dimensions domains variables equations modules clean
+.PHONY: push sym run format whl pyc build doco tests test test-one listtests init categories dimensions domains variables equations clean

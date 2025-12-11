@@ -1,17 +1,29 @@
+category colours: "All colours" 
+    [red, green, blue] 
 member red: "Red colour"
 member green: "Green colour"
 member blue: "Blue colour"
 
-category colours: "All colours" 
-    [red, green, blue] 
-"""
-All the available colours
-"""
-
+category regions: "All regions of the World" 
+    [USA, AUS, ROW]
 member USA: "USA"
 member AUS: "Australia"
 member ROW: "Rest of World"
 
-category regions: "All regions of the World" 
-    [USA, AUS, ROW]
+category sectors: "All sectors" 
+    [energy, mining, agriculture, manufacturing, services] 
+member energy: "energy"
+member mining: "mining"
+member agriculture: "agriculture"
+member manufacturing: "manufacturing"
+member services: "services"
+
+category goods: "All goods" 
+    [energy_good, mining_good, agriculture_good, manufacturing_good, services_good]
+
+member energy_good: "energy"
+member mining_good: "mining"
+member agriculture_good: "agriculture"
+member manufacturing_good: "manufacturing"
+member services_good: "services"
 

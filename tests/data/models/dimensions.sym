@@ -1,19 +1,4 @@
-member red: "Red colour"
-member green: "Green colour"
-member blue: "Blue colour"
-
-category colours: "All colours" 
-    [red, green, blue] 
-"""
-All the available colours
-"""
-
-member USA: "USA"
-member AUS: "Australia"
-member ROW: "Rest of World"
-
-category regions: "All regions of the World" 
-    [USA, AUS, ROW]
+include "categories.sym"
 
 dimension not_USA: "All regions except the USA"
     regions - [USA]
