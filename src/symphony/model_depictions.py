@@ -5,20 +5,8 @@ from enum import Enum
 from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
     AnyDeclaration,
-    DeclarationType,
     DimensionDeclaration,
-    DimensionExpression,
-    DimensionTerm,
-    DomainDeclaration,
-    DomainExpression,
-    DomainTerm,
-    EquationDeclaration,
-    MemberDeclaration,
-    ParameterDeclaration,
     Model,
-    SourcePosition,
-    UnitDeclaration,
-    VariableDeclaration,
 )
 
 
@@ -58,26 +46,55 @@ def model_to_summary(model: Model, show_position: bool = False) -> str:
     A multi-line string summarizing each declaration.
     """
     lines: List[str] = []
-    for declaration in model.declarations:
-        base = f"{declaration.declaration_type.value} {declaration.name!r}: {declaration.label!r}"
+    for category in model.categories.values():
+        base = f"Category {category.name!r}: {category.label!r}"
         extras: List[str] = []
-        if isinstance(declaration, CategoryDeclaration):
-            extras.append(f"members={declaration.dimension_members}")
-        elif isinstance(declaration, DimensionDeclaration):
-            extras.append(f"members={declaration.members}")
         if show_position:
-            extras.append(
-                f"@{declaration.type_position.line}:{declaration.type_position.column}"
-            )
+            extras.append(f"@{category.position.line}:{category.position.column}")
         if extras:
             base += "  (" + ", ".join(extras) + ")"
-        if declaration.documentation:
-            doc_preview = declaration.documentation
+        if category.documentation:
+            doc_preview = category.documentation[0]
             if len(doc_preview) > 30:
                 doc_preview = doc_preview[:27] + "..."
             base += f"  // doc={doc_preview!r}"
         lines.append(base)
-    return "\n".join(lines)
+
+        for member_name in category.members:
+            member = model.members[member_name]
+            base = f"\tMember {member.name!r}: {member.label!r}"
+            extras: List[str] = []
+            if show_position:
+                extras.append(f"@{member.position.line}:{member.position.column}")
+            if extras:
+                base += "  (" + ", ".join(extras) + ")"
+            if member.documentation:
+                doc_preview = member.documentation[0]
+                if len(doc_preview) > 30:
+                    doc_preview = doc_preview[:27] + "..."
+                base += f"  // doc={doc_preview!r}"
+            lines.append(base)
+    
+    # for declaration in model.declarations:
+    #     base = f"{declaration.__class__.__name__} {declaration.name!r}: {declaration.label!r}"
+    #     extras: List[str] = []
+    #     if isinstance(declaration, CategoryDeclaration):
+    #         extras.append(f"members={declaration.members}")
+    #     elif isinstance(declaration, DimensionDeclaration):
+    #         extras.append(f"members={declaration.members}")
+    #     if show_position:
+    #         extras.append(
+    #             f"@{declaration.position.line}:{declaration.position.column}"
+    #         )
+    #     if extras:
+    #         base += "  (" + ", ".join(extras) + ")"
+    #     if declaration.documentation:
+    #         doc_preview = declaration.documentation[0]
+    #         if len(doc_preview) > 30:
+    #             doc_preview = doc_preview[:27] + "..."
+    #         base += f"  // doc={doc_preview!r}"
+    #     lines.append(base)
+    return "\n" + "\n".join(lines)
 
 
 def _dataclass_to_tree(

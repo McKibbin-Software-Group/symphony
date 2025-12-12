@@ -1,7 +1,7 @@
 from lark import UnexpectedInput
 import pytest
 from pathlib import Path
-from symphony import SymphonyTree, symphony_parser
+from symphony import SymphonyFile, symphony_parser
 
 
 @pytest.fixture
@@ -58,36 +58,36 @@ def symphony_file_contents(model_file: Path) -> str:
         assert False, f"Failed to read input file {model_file}: {exception}\n"
 
 
-def parse_tree(symphony_file: Path) -> SymphonyTree:
+def parse_tree(symphony_file: Path) -> SymphonyFile:
     try:
-        return SymphonyTree(
-            symphony_parser().parse(symphony_file_contents(symphony_file)),
-            symphony_file,
+        return SymphonyFile(
+            file_path=symphony_file,
+            tree=symphony_parser().parse(symphony_file_contents(symphony_file)),
         )
     except UnexpectedInput as err:
         assert False, f"Failed to parse Lark Tree from {symphony_file}\n"
 
 
 @pytest.fixture
-def categories_parse_tree(categories_file: Path) -> SymphonyTree:
+def categories_parse_tree(categories_file: Path) -> SymphonyFile:
     return parse_tree(categories_file)
 
 
 @pytest.fixture
-def dimensions_parse_tree(dimensions_file: Path) -> SymphonyTree:
+def dimensions_parse_tree(dimensions_file: Path) -> SymphonyFile:
     return parse_tree(dimensions_file)
 
 
 @pytest.fixture
-def domains_parse_tree(domains_file: Path) -> SymphonyTree:
+def domains_parse_tree(domains_file: Path) -> SymphonyFile:
     return parse_tree(domains_file)
 
 
 @pytest.fixture
-def variables_parse_tree(variables_file: Path) -> SymphonyTree:
+def variables_parse_tree(variables_file: Path) -> SymphonyFile:
     return parse_tree(variables_file)
 
 
 @pytest.fixture
-def equations_parse_tree(equations_file: Path) -> SymphonyTree:
+def equations_parse_tree(equations_file: Path) -> SymphonyFile:
     return parse_tree(equations_file)

@@ -32,7 +32,7 @@ test:
 	pytest -q tests -k "$(TEST)"
 
 categories:
-	pytest -q tests -k "test_categories_json"
+	pytest -q tests -k "test_categories_abstract_syntax_tree"
 
 dimensions:
 	pytest -q tests -k "test_dimensions_json" 

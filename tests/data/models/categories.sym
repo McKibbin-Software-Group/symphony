@@ -1,6 +1,11 @@
 category colours: "All colours" 
     [red, green, blue] 
+    
 member red: "Red colour"
+"""
+So red, like a red red rose.
+"""
+
 member green: "Green colour"
 member blue: "Blue colour"
 
@@ -12,6 +17,10 @@ member ROW: "Rest of World"
 
 category sectors: "All sectors" 
     [energy, mining, agriculture, manufacturing, services] 
+"""
+Documentation for sectors category.
+"""
+
 member energy: "energy"
 member mining: "mining"
 member agriculture: "agriculture"

@@ -1,31 +1,23 @@
 from __future__ import annotations
 
 import logging
+import ast
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple
-
-from lark import Lark, Transformer, Token, Tree, v_args
-import ast
-
-from symphony import SourcePosition, symphony_parser
-
+from lark import  Token, UnexpectedInput, v_args
+from symphony import SourcePosition, SymphonyFiles, symphony_position
 from symphony.abstract_syntax_tree import (
+    DimensionDeclaration,
     Model,
     AnyDeclaration,
     MemberDeclaration,
     CategoryDeclaration,
-    DimensionDeclaration,
-    DomainDeclaration,
-    EquationDeclaration,
-    ParameterDeclaration,
-    UnitDeclaration,
-    VariableDeclaration,
+    Module,
     DimensionTerm,
-    DimensionExpression,
-    DomainTerm,
-    DomainExpression,
-    Documentation,
+    StringWithPosition,
 )
+from symphony.base_transformer import BaseTransformer
+from symphony.loader import Loader
 
 # Builds the Pass 1 parser and transformer for Symphony.
 # It loads the packaged grammar, parses the model declaration into a Lark parse tree,
@@ -34,7 +26,7 @@ from symphony.abstract_syntax_tree import (
 
 
 @v_args(meta=True)
-class AbstractSyntaxTreeTransformer(Transformer):
+class AbstractSyntaxTreeTransformer(BaseTransformer):
     """
     Pass 1: parse-tree → raw abstract syntax tree tokens, with no semantic validation.
 
@@ -48,142 +40,184 @@ class AbstractSyntaxTreeTransformer(Transformer):
           * check for duplicate names.
     """
 
-    # ---------- low-level helpers ----------
-
-    @staticmethod
-    def _position(token_or_meta: Any) -> SourcePosition:
-        line = getattr(token_or_meta, "line", None)
-        column = getattr(token_or_meta, "column", None)
-        if line is None or column is None:
-            raise AttributeError(
-                "Position data not available; ensure positions are propagated in the parser."
-            )
-        return SourcePosition(line=line, column=column)
-
-    @staticmethod
-    def _parse_escaped_string(token: Token) -> str:
-        """
-        Convert an ESCAPED_STRING token into its Python string content.
-        """
-        # Token.value includes the quotes; strip and unescape.
-        return ast.literal_eval(token.value)
-        # raw = token.value
-        # return raw[1:-1].encode("utf-8").decode("unicode_escape")
-
     # ---------- leaf grammar rules ----------
 
-    def label(self, meta: Any, items: List[Token]) -> Tuple[str, SourcePosition]:
-        assert len(items) == 1
-        tok = items[0]
-        return self._parse_escaped_string(tok), self._position(tok)
+    def label(self, meta: Any, children: List[Token]) -> StringWithPosition:
+        assert len(children) == 1, f"Expected one label but found {len(children)}"
+        token = children[0]
+        return ast.literal_eval(token.value), symphony_position(self.file_path, meta)
 
-    def documentation(self, meta: Any, items: List[Token]) -> Documentation:
-        assert len(items) == 1
-        tok = items[0]
-        text = tok.value[3:-3]  # strip leading and trailing """ of TRIPLE_STRING
-        return text, self._position(tok)
-
-    def name_list(self, meta: Any, items: List[Token]) -> DimensionTerm:
-        # The grammar has "[ NAME (',' NAME)* ]"; here we see only NAME tokens.
-        return ("list", list(items))
-
-    def dimension_reference(self, meta: Any, items: List[Token]) -> DimensionTerm:
-        assert len(items) == 1
-        tok = items[0]
-        name = tok.value
-        pos = self._position(tok)
-        return ("dimension reference", (name, pos))
-
-    def dimension_expression(self, meta: Any, items: List[Any]) -> DimensionExpression:
+    def documentation(self, meta: Any, children: List[Token]) -> StringWithPosition:
         """
-        Build a raw DimensionExpression:
-            ("dimension_expression", first_term, [(op, term), ...])
+        ### Overview
+        Documentation Markdown handler.
         """
-        if not items:
-            empty: DimensionTerm = ("list", [])
-            return ("dimension_expression", empty, [])
+        assert len(children) == 1
+        
+        # strip leading and trailing """ of TRIPLE_STRING
+        text: str = children[0].value[3:-3]  
 
-        first_term: DimensionTerm = items[0]
-        rest: List[Tuple[str, DimensionTerm]] = []
-        i = 1
-        while i < len(items):
-            op_token: Token = items[i]
-            term: DimensionTerm = items[i + 1]
-            rest.append((op_token.value, term))
-            i += 2
-        return ("dimension_expression", first_term, rest)
+        # Remove leading and trailing whitespace/newlines
+        text = text.strip()
 
-    def dimension_term(self, meta: Any, items: List[Any]) -> DimensionTerm:
-        # Forward the term built by name_list or dimension_reference
-        assert len(items) == 1
-        return items[0]
+        return (text, symphony_position(self.file_path, meta))
 
-    def domain_reference(self, meta: Any, items: List[Token]) -> DomainTerm:
-        assert len(items) == 1
-        tok = items[0]
-        name = tok.value
-        pos = self._position(tok)
-        return ("domain reference", (name, pos))
-
-    def domain_expression(self, meta: Any, items: List[Any]) -> DomainExpression:
+    def name_list(self, meta: Any, children: List[Token]) -> DimensionTerm:
         """
-        Build a raw DomainExpression:
-            ("domain_expression", first_term, [(op, term), ...])
+        ### Overview
+
+        Returns a list of NAME tokens.
+        
+        e.g.
+        
+        [Token('NAME', 'red'), Token('NAME', 'green'), Token('NAME', 'blue')]
+        
         """
-        if not items:
-            empty: DomainTerm = ("list", [])
-            return ("domain_expression", empty, [])
+        return ("list", tuple(children))
+        
+    def member_list(self, meta: Any, children: List[Any]) -> DimensionTerm:
+        """
+        children = ["[", name_list, "]"]  (brackets may or may not appear depending on BaseTransformer)
+        """
+        # name_list already returns ("list", [...])
+        for child in children:
+            if isinstance(child, tuple) and child[0] == "list":
+                return child
+        position = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        raise AssertionError("member_list did not contain a list term")
 
-        first_term: DomainTerm = items[0]
-        rest: List[Tuple[str, DomainTerm]] = []
-        i = 1
-        while i < len(items):
-            op_token: Token = items[i]
-            term: DomainTerm = items[i + 1]
-            rest.append((op_token.value, term))
-            i += 2
-        return ("domain_expression", first_term, rest)
+    # ---------- declaration rules ----------
+    def get_name(self, token: Token) -> str:
+        """
+        ### Overview
 
-    def domain_term(self, meta: Any, items: List[Any]) -> DomainTerm:
-        assert len(items) == 1
-        return items[0]
+        Extract name from a NAME token.
 
-    # ---------- declaration wrapper ----------
+        ### Exceptions
+        Raises an assertion error if the token is not a NAME token.
+        """
+        assert isinstance(token, Token) and token.type == "NAME", "Expected a NAME token"
+        return token.value
+    
+    def get_label(self,label_with_position: StringWithPosition) -> str:
+        """
+        ### Overview
 
-    def declaration(self, meta: Any, items: List[Any]) -> Any:
-        # The 'declaration' rule just wraps a more specific *_decl rule.
-        assert len(items) == 1
-        return items[0]
+        Extract label string generated by the `label` grammar rule.
 
-    # ---------- helper extractors ----------
+        ### Exceptions
+        Raises an assertion error if the label child is not a string.
+        """
+        assert isinstance(label_with_position, tuple) and isinstance(label_with_position[0], str), "Expected a label string"
+        return label_with_position[0]
 
-    @staticmethod
-    def _pick_doc_and_expr(
-        extra_items: List[Any],
-    ) -> Tuple[Optional[Documentation], Optional[DimensionExpression]]:
-        documentation: Optional[Documentation] = None
-        expression: Optional[DimensionExpression] = None
 
-        for item in extra_items:
-            if not isinstance(item, tuple):
-                continue
-            # Dimension expressions are tagged by the first element.
-            if (
-                len(item) >= 1
-                and isinstance(item[0], str)
-                and item[0] == "dimension_expression"
-            ):
-                expression = item  # type: ignore[assignment]
-            elif documentation is None and len(item) == 2 and isinstance(item[0], str):
-                documentation = item  # type: ignore[assignment]
+    def member_declaration(self, meta: Any, children: List[Any]) -> MemberDeclaration:
+        """
+        ### Overview
 
-        return documentation, expression
+        Member declaration handler.
+        """
+        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+
+        logging.debug(children)
+        name: str = self.get_name(children[1])
+        label: str = self.get_label(children[2])
+        documentation, list_term = self._pick_doc_and_list(children[3:])
+
+        return MemberDeclaration(
+            position=position,
+            name=name,
+            label=label,
+            documentation=documentation,
+        )
+
+    def category_declaration(self, meta: Any, children: List[Any]) -> CategoryDeclaration:
+        """
+        ### Overview
+
+        Category declaration handler.
+        """
+        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        name: str = self.get_name(children[1])
+        label: str = children[2][0]
+        documentation, list_term = self._pick_doc_and_list(children[3:])
+
+        members: List[str] = []
+        if list_term is not None:
+            tag, payload = list_term
+            if tag != "list":
+                raise ValueError("Internal error: expected list term for category.")
+            tokens: Iterable[Token] = payload
+            members = [tok.value for tok in tokens]
+
+        return CategoryDeclaration(
+            position=position,
+            name=name,
+            label=label,
+            documentation=documentation,
+            members=members,
+        )
+
+    def dimension_declaration(self, meta: Any, children: List[Any]) -> DimensionDeclaration:
+        """
+        ### Overview
+
+        Dimension declaration handler.
+        """
+        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        name: str = self.get_name(token=children[1])
+        label: str = self.get_label(label_with_position=children[2])
+        documentation, list_term = self._pick_doc_and_list(children[3:])
+        logging.debug(list_term)
+        exit("Done")
+
+        members: List[str] = []
+        if list_term is not None:
+            tag, payload = list_term
+            if tag != "list":
+                raise ValueError("Internal error: expected list term for category.")
+            tokens: Iterable[Token] = payload
+            members = [tok.value for tok in tokens]
+
+        return CategoryDeclaration(
+            position=position,
+            name=name,
+            label=label,
+            documentation=documentation,
+            members=members,
+        )        
+
+    # ---------- top-level rule ----------
+
+    def start(self, meta: Any, children: List[AnyDeclaration]) -> Model:
+        """
+        Top-level grammar rule: wrap all declarations into a Program.
+        No semantic checks here.
+        """
+        return Module(declarations=children)
+
 
     @staticmethod
     def _pick_doc_and_list(
         extra_items: List[Any],
-    ) -> Tuple[Optional[Documentation], Optional[DimensionTerm]]:
-        documentation: Optional[Documentation] = None
+    ) -> Tuple[Optional[StringWithPosition], Optional[DimensionTerm]]:
+        """
+        ### Overview
+        
+        Extract documentation from remaining list terms in a declaration.
+        
+        ### Arguments
+        
+        - `extra_items: List[Any]`: The list of extra items to search.
+        
+        ### Returns
+        
+        - `Tuple[Optional[Documentation], Optional[DimensionTerm]]`: The extracted documentation and list term.
+        
+        """
+
+        documentation: Optional[StringWithPosition] = None
         list_term: Optional[DimensionTerm] = None
 
         for item in extra_items:
@@ -196,214 +230,29 @@ class AbstractSyntaxTreeTransformer(Transformer):
 
         return documentation, list_term
 
-    # ---------- declaration rules ----------
 
-    def category_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        # "category" NAME ":" label name_list doc?
-        type_position = self._position(meta)
-        name_token: Token = items[0]
-        label_text, label_pos = items[1]
-        documentation, list_term = self._pick_doc_and_list(items[2:])
-        return self._build_category(
-            type_position, name_token, label_text, label_pos, list_term, documentation
-        )
 
-    def dimension_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        # "dimension" NAME ":" label dimension_expression doc?
-        type_position = self._position(meta)
-        name_token: Token = items[0]
-        label_text, label_pos = items[1]
-        documentation, expression = self._pick_doc_and_expr(items[2:])
-        return self._build_dimension(
-            type_position, name_token, label_text, label_pos, expression, documentation
-        )
+# ---------- Create the abstract syntax tree for the whole model ---------
 
-    def other_declaration(
-        self, kind: str, meta: Any, items: List[Any]
-    ) -> AnyDeclaration:
-        """
-        Helper for declarations with just NAME ":" label doc?.
-        """
-        type_position = self._position(meta)
-        name_token: Token = items[0]
-        label_text, label_pos = items[1]
 
-        documentation: Optional[Documentation] = None
-        for item in items[2:]:
-            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str):
-                documentation = item  # type: ignore[assignment]
-                break
+def load_model(root_file_path: Path) -> SymphonyFiles:
+    """
+    ### Overview
 
-        return self._build_other(
-            kind, type_position, name_token, label_text, label_pos, documentation
-        )
+    Load a complete Symphony model from the given root file path,
+    processing all included files recursively.
 
-    # Rule-specific wrappers:
+    ### Arguments
 
-    def member_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        return self.other_declaration("member", meta, items)
+    - `root_file_path`: Path to the root Symphony file.
 
-    def parameter_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        return self.other_declaration("parameter", meta, items)
-
-    def unit_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        return self.other_declaration("unit", meta, items)
-
-    def variable_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        return self.other_declaration("variable", meta, items)
-
-    def equation_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        return self.other_declaration("equation", meta, items)
-
-    def dimensions_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        type_position = self._position(meta)
-        name_token: Token = items[0]
-        label_text, label_pos = items[1]
-        documentation, list_term = self._pick_doc_and_list(items[2:])
-        return self._build_dimensions(
-            type_position, name_token, label_text, label_pos, list_term, documentation
-        )
-
-    def domain_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
-        # Domain expressions are not yet implemented in the grammar
-        # beyond a placeholder, so we treat this like a simple decl.
-        return self.other_declaration("domain", meta, items)
-
-    # ---------- builders ----------
-
-    def _build_dimension(
-        self,
-        type_position: SourcePosition,
-        name_token: Token,
-        label_text: str,
-        label_position: SourcePosition,
-        expression: Optional[DimensionExpression],
-        documentation: Optional[Documentation],
-    ) -> DimensionDeclaration:
-        """
-        Build a DimensionDeclaration without evaluating the expression.
-        """
-        name_position = self._position(name_token)
-        name_str = name_token.value
-
-        # Pass 1 leaves members empty; a later pass will fill them.
-        empty_members: List[str] = []
-
-        return DimensionDeclaration(
-            position=type_position,
-            name=name_str,
-            label=label_text,
-            documentation=documentation[0] if documentation else None,
-            members=empty_members,
-            expression=expression,
-        )
-
-    def _build_category(
-        self,
-        type_position: SourcePosition,
-        name_token: Token,
-        label_text: str,
-        label_position: SourcePosition,
-        list_term: Optional[DimensionTerm],
-        documentation: Optional[Documentation],
-    ) -> CategoryDeclaration:
-        """
-        Build a CategoryDeclaration, preserving the member list syntactically.
-        No category-membership validation happens here.
-        """
-        name_position = self._position(name_token)
-        name_str = name_token.value
-
-        members: List[str] = []
-        if list_term is not None:
-            tag, payload = list_term
-            if tag != "list":
-                raise ValueError("Internal error: expected list term for category.")
-            tokens: Iterable[Token] = payload
-            members = [tok.value for tok in tokens]
-
-        return CategoryDeclaration(
-            position=type_position,
-            name=name_str,
-            label=label_text,
-            documentation=documentation[0] if documentation else None,
-            dimension_members=members,
-        )
-
-    def _build_other(
-        self,
-        type_text: str,
-        type_position: SourcePosition,
-        name_token: Token,
-        label_text: str,
-        label_position: SourcePosition,
-        documentation: Optional[Documentation],
-    ) -> AnyDeclaration:
-        """
-        Build all other declaration types that do not carry expressions in Pass 1.
-        """
-        if type_text != type_text.lower():
-            raise ValueError(
-                f"Declaration type must be lower-case, found '{type_text}' "
-                f"at {type_position.line}:{type_position.column}"
-            )
-
+    """
+    symphony_files: SymphonyFiles = Loader().load_symphony_files(root_file_path)
+    result: Model = Model()
+    for symphony_file in symphony_files.file_list:
         try:
-            declaration_type = DeclarationType(type_text)
-        except ValueError as exc:
-            raise ValueError(
-                f"Unknown declaration type '{type_text}' at {type_position.line}:{type_position.column}"
-            ) from exc
-
-        name_position = self._position(name_token)
-        name_str = name_token.value
-
-        common_keyword_arguments = dict(
-            declaration_type=declaration_type,
-            type_position=type_position,
-            name=name_str,
-            name_position=name_position,
-            label=label_text,
-            label_position=label_position,
-            documentation=documentation[0] if documentation else None,
-            documentation_position=documentation[1] if documentation else None,
-        )
-
-        match declaration_type:
-            case DeclarationType.member:
-                return MemberDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case DeclarationType.parameter:
-                return ParameterDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case DeclarationType.unit:
-                return UnitDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case DeclarationType.variable:
-                return VariableDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case DeclarationType.equation:
-                return EquationDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case DeclarationType.domain:
-                return DomainDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case DeclarationType.dimension:
-                return DimensionDeclaration(**common_keyword_arguments)  # type: ignore[arg-type]
-            case _:
-                raise AssertionError(f"Unhandled declaration type {declaration_type}")
-
-    # ---------- top-level rule ----------
-
-    def start(self, meta: Any, items: List[AnyDeclaration]) -> Model:
-        """
-        Top-level grammar rule: wrap all declarations into a Program.
-        No semantic checks here.
-        """
-        return Model(declarations=items)
-
-
-# ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------
-
-
-def parse_declarations(text: str) -> Model:
-    """
-    Parse source text into a Program AST using the Pass 1 transformer.
-    """
-    tree: Tree = symphony_parser().parse(text)
-    program: Model = AbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
-    return program
+            module: Module = AbstractSyntaxTreeTransformer(symphony_file.file_path).transform(symphony_file.tree)
+        except UnexpectedInput as err:
+            assert False, f"Failed to analyse declaration in {symphony_file.file_path}\n"
+        result.add(module)
+    return result

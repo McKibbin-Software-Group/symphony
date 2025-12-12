@@ -1,9 +1,52 @@
 from dataclasses import dataclass
 from importlib import resources
-from typing import Any, Dict
+from typing import Any, Dict, List
 from lark import Lark, Tree
 from pathlib import Path
 
+
+@dataclass(frozen=True)
+class SourcePosition:
+    """
+    Position information associated with Symphony declarations.
+
+    ### Properties
+    - `file_path`: Abosolute path to the source file.
+    - `line`: 1-based line number.
+    - `column`: 1-based column number.
+    """
+
+    file_path: Path
+    line: int
+    column: int
+
+    def __str__(self):
+        """
+        Convert the SourcePosition to a human-readable string.
+
+        ### Returns
+
+        String in the format 'file_path:line:column'.
+        """
+        return f"{self.file_path.name} line {self.line} column {self.column}"
+
+    def to_dictionary(self) -> Dict[str, Any]:
+        """
+        Convert the SourcePosition to a dictionary representation.
+
+        ### Returns
+
+        Dictionary with keys 'file_path', 'line', and 'column'.
+        """
+        return {
+            "file_path": str(self.file_path),
+            "line": self.line,
+            "column": self.column,
+        }
+    
+
+
+        
 
 def symphony_parser() -> Lark:
     """
@@ -63,53 +106,6 @@ def symphony_position(file_path: Path, token_or_meta: Any) -> SourcePosition:
     return SourcePosition(file_path=file_path, line=line, column=column)
 
 
-class SymphonyTree:
-
-    def __init__(self, parse_tree: Tree, file_path: Path) -> None:
-
-        assert parse_tree is not None, "Parse tree cannot be None"
-        assert isinstance(
-            parse_tree, Tree
-        ), "parse_tree must be an instance of lark.Tree"
-        self.parse_tree: Tree = parse_tree
-
-        assert file_path is not None, "file_path cannot be None"
-        assert isinstance(
-            file_path, Path
-        ), "file_path must be an instance of pathlib.Path"
-        self.file_path: Path = file_path
-
-
-@dataclass(frozen=True)
-class SourcePosition:
-    """
-    Position information associated with Symphony declarations.
-
-    ### Properties
-    - `file_path`: Abosolute path to the source file.
-    - `line`: 1-based line number.
-    - `column`: 1-based column number.
-    """
-
-    file_path: Path
-    line: int
-    column: int
-
-    def to_dictionary(self) -> Dict[str, Any]:
-        """
-        Convert the SourcePosition to a dictionary representation.
-
-        ### Returns
-
-        Dictionary with keys 'file_path', 'line', and 'column'.
-        """
-        return {
-            "file_path": str(self.file_path),
-            "line": self.line,
-            "column": self.column,
-        }
-
-
 class SymphonyFile:
     """
     ### Overview
@@ -119,11 +115,47 @@ class SymphonyFile:
     ### Properties
 
     - `file_path`: Path to the Symphony file.
-    - `symphony_tree`: SymphonyTree representing the parsed content of the file.
+    - `tree`: Lark Tree representing the parsed content of the file.
     """
 
-    file_path: Path
-    symphony_tree: SymphonyTree
+    def __init__(self, file_path: Path, tree: Tree) -> None:
+        assert file_path is not None, "file_path cannot be None"
+        assert isinstance(
+            file_path, Path
+        ), "file_path must be an instance of pathlib.Path"
+        self._file_path: Path = file_path
+
+        assert tree is not None, "tree cannot be None"
+        assert isinstance(
+            tree, Tree
+        ), "tree must be an instance of Tree"
+        self._tree: Tree = tree
+
+    @property
+    def file_path(self) -> Path:
+        """
+        ### Overview
+
+        Get the path to the Symphony file.
+
+        ### Returns
+
+        Path to the Symphony file.
+        """
+        return self._file_path
+    
+    @property
+    def tree(self) -> Tree:
+        """
+        ### Overview
+
+        Get the SymphonyTree representing the parsed content of the file.
+
+        ### Returns
+
+        SymphonyTree of the file.
+        """
+        return self._tree
 
 
 class SymphonyFiles:
@@ -138,4 +170,36 @@ class SymphonyFiles:
 
     """
 
-    files: Dict[Path, SymphonyFile]
+    def __init__(self, files: Dict[Path, SymphonyFile]) -> None:
+        assert files is not None, "files cannot be None"
+        assert isinstance(
+            files, dict
+        ), "files must be a dictionary mapping Path to SymphonyFile"
+        self._files = files
+    
+    @property
+    def files(self) -> Dict[Path, SymphonyFile]:
+        """
+        ### Overview
+
+        Get the dictionary that maps file paths to Symphony files.
+
+        ### Returns
+
+        Dictionary mapping from Path to SymphonyFile.
+        """
+        return self._files
+
+
+    @property
+    def file_list(self) -> List[SymphonyFile]:
+        """
+        ### Overview
+
+        Get the list of Symphony files in the model.
+
+        ### Returns
+
+        List of SymphonyFile instances.
+        """
+        return list(self.files.values())
