@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pytest import CaptureFixture
 
+
 def commandline_processing_of_members(file: Path, capsys: CaptureFixture) -> None:
     repo_root = Path(__file__).resolve().parents[1]
 
@@ -37,11 +38,18 @@ def commandline_processing_of_members(file: Path, capsys: CaptureFixture) -> Non
 def test_commandline_processing_of_members(members_file: Path, capsys: CaptureFixture):
     commandline_processing_of_members(file=members_file, capsys=capsys)
 
-def test_commandline_processing_of_categories(categories_file: Path, capsys: CaptureFixture):
+
+def test_commandline_processing_of_categories(
+    categories_file: Path, capsys: CaptureFixture
+):
     commandline_processing_of_members(file=categories_file, capsys=capsys)
 
-def test_commandline_processing_of_dimensions(dimensions_file: Path, capsys: CaptureFixture):
+
+def test_commandline_processing_of_dimensions(
+    dimensions_file: Path, capsys: CaptureFixture
+):
     commandline_processing_of_members(file=dimensions_file, capsys=capsys)
+
 
 def test_commandline_processing_of_domains(domains_file: Path, capsys: CaptureFixture):
     commandline_processing_of_members(file=domains_file, capsys=capsys)

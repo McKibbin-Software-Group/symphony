@@ -10,21 +10,21 @@ import ast
 from symphony import SourcePosition, symphony_parser
 
 from symphony.abstract_syntax_tree import (
-    CategoryDeclaration,
-    DeclarationNode,
-    DeclarationType,
-    DimensionDeclaration,
-    DimensionExpression,
-    DimensionTerm,
-    DomainDeclaration,
-    DomainExpression,
-    DomainTerm,
-    EquationDeclaration,
-    MemberDeclaration,
-    ParameterDeclaration,
     Model,
+    AnyDeclaration,
+    MemberDeclaration,
+    CategoryDeclaration,
+    DimensionDeclaration,
+    DomainDeclaration,
+    EquationDeclaration,
+    ParameterDeclaration,
     UnitDeclaration,
     VariableDeclaration,
+    DimensionTerm,
+    DimensionExpression,
+    DomainTerm,
+    DomainExpression,
+    Documentation,
 )
 
 # Builds the Pass 1 parser and transformer for Symphony.
@@ -32,8 +32,6 @@ from symphony.abstract_syntax_tree import (
 # and produces a raw abstract syntax tree without semantic validation; later passes
 # handle ordering and cross-reference checks and other semantic analysis.
 
-# The content + position of a docstring for an entity.
-Documentation = Tuple[str, SourcePosition]
 
 @v_args(meta=True)
 class AbstractSyntaxTreeTransformer(Transformer):
@@ -57,7 +55,9 @@ class AbstractSyntaxTreeTransformer(Transformer):
         line = getattr(token_or_meta, "line", None)
         column = getattr(token_or_meta, "column", None)
         if line is None or column is None:
-            raise AttributeError("Position data not available; ensure positions are propagated in the parser.")
+            raise AttributeError(
+                "Position data not available; ensure positions are propagated in the parser."
+            )
         return SourcePosition(line=line, column=column)
 
     @staticmethod
@@ -117,7 +117,6 @@ class AbstractSyntaxTreeTransformer(Transformer):
         # Forward the term built by name_list or dimension_reference
         assert len(items) == 1
         return items[0]
-
 
     def domain_reference(self, meta: Any, items: List[Token]) -> DomainTerm:
         assert len(items) == 1
@@ -199,7 +198,7 @@ class AbstractSyntaxTreeTransformer(Transformer):
 
     # ---------- declaration rules ----------
 
-    def category_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def category_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         # "category" NAME ":" label name_list doc?
         type_position = self._position(meta)
         name_token: Token = items[0]
@@ -209,7 +208,7 @@ class AbstractSyntaxTreeTransformer(Transformer):
             type_position, name_token, label_text, label_pos, list_term, documentation
         )
 
-    def dimension_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def dimension_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         # "dimension" NAME ":" label dimension_expression doc?
         type_position = self._position(meta)
         name_token: Token = items[0]
@@ -219,7 +218,9 @@ class AbstractSyntaxTreeTransformer(Transformer):
             type_position, name_token, label_text, label_pos, expression, documentation
         )
 
-    def other_declaration(self, kind: str, meta: Any, items: List[Any]) -> DeclarationNode:
+    def other_declaration(
+        self, kind: str, meta: Any, items: List[Any]
+    ) -> AnyDeclaration:
         """
         Helper for declarations with just NAME ":" label doc?.
         """
@@ -233,26 +234,28 @@ class AbstractSyntaxTreeTransformer(Transformer):
                 documentation = item  # type: ignore[assignment]
                 break
 
-        return self._build_other(kind, type_position, name_token, label_text, label_pos, documentation)
+        return self._build_other(
+            kind, type_position, name_token, label_text, label_pos, documentation
+        )
 
     # Rule-specific wrappers:
 
-    def member_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def member_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         return self.other_declaration("member", meta, items)
 
-    def parameter_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def parameter_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         return self.other_declaration("parameter", meta, items)
 
-    def unit_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def unit_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         return self.other_declaration("unit", meta, items)
 
-    def variable_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def variable_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         return self.other_declaration("variable", meta, items)
 
-    def equation_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def equation_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         return self.other_declaration("equation", meta, items)
 
-    def dimensions_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def dimensions_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         type_position = self._position(meta)
         name_token: Token = items[0]
         label_text, label_pos = items[1]
@@ -260,10 +263,8 @@ class AbstractSyntaxTreeTransformer(Transformer):
         return self._build_dimensions(
             type_position, name_token, label_text, label_pos, list_term, documentation
         )
-    
 
-
-    def domain_declaration(self, meta: Any, items: List[Any]) -> DeclarationNode:
+    def domain_declaration(self, meta: Any, items: List[Any]) -> AnyDeclaration:
         # Domain expressions are not yet implemented in the grammar
         # beyond a placeholder, so we treat this like a simple decl.
         return self.other_declaration("domain", meta, items)
@@ -289,16 +290,12 @@ class AbstractSyntaxTreeTransformer(Transformer):
         empty_members: List[str] = []
 
         return DimensionDeclaration(
-            declaration_type=DeclarationType.dimension,
-            type_position=type_position,
+            position=type_position,
             name=name_str,
-            name_position=name_position,
             label=label_text,
-            label_position=label_position,
             documentation=documentation[0] if documentation else None,
-            documentation_position=documentation[1] if documentation else None,
-            dimension_members=empty_members,
-            dimension_expression=expression,
+            members=empty_members,
+            expression=expression,
         )
 
     def _build_category(
@@ -326,14 +323,10 @@ class AbstractSyntaxTreeTransformer(Transformer):
             members = [tok.value for tok in tokens]
 
         return CategoryDeclaration(
-            declaration_type=DeclarationType.category,
-            type_position=type_position,
+            position=type_position,
             name=name_str,
-            name_position=name_position,
             label=label_text,
-            label_position=label_position,
             documentation=documentation[0] if documentation else None,
-            documentation_position=documentation[1] if documentation else None,
             dimension_members=members,
         )
 
@@ -345,7 +338,7 @@ class AbstractSyntaxTreeTransformer(Transformer):
         label_text: str,
         label_position: SourcePosition,
         documentation: Optional[Documentation],
-    ) -> DeclarationNode:
+    ) -> AnyDeclaration:
         """
         Build all other declaration types that do not carry expressions in Pass 1.
         """
@@ -396,7 +389,7 @@ class AbstractSyntaxTreeTransformer(Transformer):
 
     # ---------- top-level rule ----------
 
-    def start(self, meta: Any, items: List[DeclarationNode]) -> Model:
+    def start(self, meta: Any, items: List[AnyDeclaration]) -> Model:
         """
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
@@ -405,6 +398,7 @@ class AbstractSyntaxTreeTransformer(Transformer):
 
 
 # ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------
+
 
 def parse_declarations(text: str) -> Model:
     """

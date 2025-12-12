@@ -1,32 +1,20 @@
 from __future__ import annotations
-
 import sys
 import argparse
-from importlib import resources
 from pathlib import Path
 from typing import List, Optional
-
 from lark import UnexpectedInput
-
-from symphony import symphony_parser
-
-from symphony.abstract_syntax_tree import (
-    Model,
-)
-
-from symphony.model_depictions import (
-    model_to_tree,
-    model_to_summary,
-)
-
+from symphony import SymphonyTree, symphony_parser
+from symphony.abstract_syntax_tree import Model
+from symphony.model_depictions import model_to_tree, model_to_summary
 from symphony.logging import configure_logging, print_parse_error
-from symphony.abstract_syntax_tree_transformer import parse_declarations
+from symphony.abstract_syntax_tree_transformer import AbstractSyntaxTreeTransformer
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """
     ### Overview
-    
+
     Parse command line arguments.
 
     ### Arguments
@@ -62,13 +50,13 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     """
-    
+
     ### Overview
-    
+
     Main entry point for the Symphony processor command line interface.
-    
+
     ### Arguments
-    
+
     - `argv: Optional[List[str]]`: List of command line arguments. If `None`, uses `sys.argv`.
     """
     args = _parse_args(argv)
@@ -82,15 +70,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     try:
-        program: Model = parse_declarations(text)
+        symphony_tree: SymphonyTree = symphony_parser().parse(text)
+        model: Model = AbstractSyntaxTreeTransformer().transform(symphony_tree)
     except UnexpectedInput as err:
         print_parse_error(err, text, args.input)
         return 1
 
     if args.format == "tree":
-        output = model_to_tree(program, show_position=args.show_pos)
+        output: str = model_to_tree(model, show_position=args.show_pos)
     else:
-        output = model_to_summary(program, show_position=args.show_pos)
+        output: str = model_to_summary(model, show_position=args.show_pos)
 
     print(output)
     return 0

@@ -53,7 +53,7 @@ listtests:
 # Format the source code using the black formatter.
 # https://pypi.org/project/black/
 format:
-	black src/gcubed
+	black src/symphony
 	black tests
 
 # Source package for distribution

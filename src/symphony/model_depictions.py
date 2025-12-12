@@ -4,7 +4,7 @@ from typing import Any, List, Tuple
 from enum import Enum
 from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
-    DeclarationNode,
+    AnyDeclaration,
     DeclarationType,
     DimensionDeclaration,
     DimensionExpression,
@@ -21,13 +21,16 @@ from symphony.abstract_syntax_tree import (
     VariableDeclaration,
 )
 
+
 def model_to_tree(root: Any, show_position: bool = False) -> str:
     """
     Pretty ASCII tree representation of the AST.
     """
     root_label, root_children = _dataclass_to_tree(root, show_position)
 
-    def walk(label: str, kids: List[Tuple[str, List[Tuple[str, list]]]], indent: str = "") -> List[str]:
+    def walk(
+        label: str, kids: List[Tuple[str, List[Tuple[str, list]]]], indent: str = ""
+    ) -> List[str]:
         lines: List[str] = [f"{indent}{label}"]
         for edge_label, gc in kids:
             lines.append(f"{indent}├─ {edge_label}")
@@ -39,6 +42,7 @@ def model_to_tree(root: Any, show_position: bool = False) -> str:
         return lines
 
     return "\n".join(walk(root_label, root_children))
+
 
 def model_to_summary(model: Model, show_position: bool = False) -> str:
     """
@@ -60,9 +64,11 @@ def model_to_summary(model: Model, show_position: bool = False) -> str:
         if isinstance(declaration, CategoryDeclaration):
             extras.append(f"members={declaration.dimension_members}")
         elif isinstance(declaration, DimensionDeclaration):
-            extras.append(f"members={declaration.dimension_members}")
+            extras.append(f"members={declaration.members}")
         if show_position:
-            extras.append(f"@{declaration.type_position.line}:{declaration.type_position.column}")
+            extras.append(
+                f"@{declaration.type_position.line}:{declaration.type_position.column}"
+            )
         if extras:
             base += "  (" + ", ".join(extras) + ")"
         if declaration.documentation:
@@ -74,7 +80,9 @@ def model_to_summary(model: Model, show_position: bool = False) -> str:
     return "\n".join(lines)
 
 
-def _dataclass_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, List[Tuple[str, list]]]]]:
+def _dataclass_to_tree(
+    node: Any, show_pos: bool
+) -> Tuple[str, List[Tuple[str, List[Tuple[str, list]]]]]:
     """
     Convert a dataclass instance into a generic (label, children) tree.
     """
@@ -115,7 +123,7 @@ def _dataclass_to_tree(node: Any, show_pos: bool) -> Tuple[str, List[Tuple[str, 
 
 def _is_position_like(field_name: str, value: Any) -> bool:
     """
-    Heuristic to determine if a field is position-like 
+    Heuristic to determine if a field is position-like
     (i.e., represents source code position information).
     """
     if field_name.endswith("_position"):

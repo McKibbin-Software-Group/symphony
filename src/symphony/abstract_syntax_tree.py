@@ -10,120 +10,44 @@ from symphony import SourcePosition
 
 # ========= Core AST node types =========
 
+DomainTuple = Tuple[str]  # The members in a tuple.
+DomainTuples = Tuple[DomainTuple]  # The tuples in a domain.
 
-class DeclarationType(str, Enum):
-    """
-    Top-level declaration types.
-    """
-    member = "member"
-    unit = "unit"
-    dimension = "dimension"
-    dimensions = "dimensions"
-    domain = "domain"
-    parameter = "parameter"
-    variable = "variable"
-    equation = "equation"
-    category = "category"
-
-DomainTuple = List[str] # The list of members in a domain tuple.
-DomainTuples = List[DomainTuple] # The list of tuples in a domain.
-
-Documentation = Tuple[str, SourcePosition] # The content and position of a docstring documentation for an entity.
+# The content and position of a docstring documentation for an entity.
+Documentation = Tuple[str, SourcePosition]
 
 # Internal structures used for dimension expressions:
 # ("list", List[Token])  -> a bracketed list of member names
 # ("dimension reference", (name, SourcePosition)) -> reference to a dimension
 DimensionTerm = Tuple[str, Any]
 
+# ("dimension_expression", first_term, [(op, term), ...])
+DimensionExpression = Tuple[str, DimensionTerm, List[Tuple[str, DimensionTerm]]]
+
 # Internal structure used for domain expressions:
 # ("dimension reference", (name, SourcePosition)) -> reference to a dimension
 DomainTerm = Tuple[str, Tuple[str, SourcePosition]]
 
-# ("dimension_expression", first_term, [(op, term), ...])
-DimensionExpression = Tuple[str, DimensionTerm, List[Tuple[str, DimensionTerm]]]
-
 # ("domain_expression", first_term, [(op, term), ...])
 DomainExpression = Tuple[str, DomainTerm, List[Tuple[str, DomainTerm]]]
+
 
 @dataclass(frozen=True)
 class Declaration:
     """
     Base class for all top-level declarations.
+
+    The common fields are:
+    - `position`: Source position of the declaration.
+    - `name`: Optional name of the declared entity.
+    - `label`: Optional label of the declared entity.
+    - `documentation`: Optional documentation string associated with the declaration.
+
     """
-    declaration_type: DeclarationType
-    type_position: SourcePosition
 
-    name: str
-    name_position: SourcePosition
-
-    label: str
-    label_position: SourcePosition
-
+    position: SourcePosition
+    label: Optional[str]
     documentation: Optional[str]
-    documentation_position: Optional[SourcePosition]
-
-
-@dataclass(frozen=True)
-class MemberDeclaration(Declaration):
-    """
-    Member declaration.
-    """
-    pass
-
-
-@dataclass(frozen=True)
-class UnitDeclaration(Declaration):
-    """
-    Unit declaration.
-    """
-    pass
-
-
-@dataclass(frozen=True)
-class DimensionDeclaration(Declaration):
-    """
-    Dimension declaration.
-
-    Pass 1:
-        - `dimension_expression` holds the raw dimension expression AST.
-        - `dimension_members` is left empty.
-
-    Later semantic passes:
-        - evaluate `dimension_expression`
-        - fill `dimension_members` with the resolved member names.
-    """
-    dimension_members: List[str]
-    dimension_expression: Optional[DimensionExpression] = None
-
-
-@dataclass(frozen=True)
-class CategoryDeclaration(DimensionDeclaration):
-    """
-    Category declaration (a specialized dimension).
-    """
-    pass
-
-@dataclass(frozen=True)
-class DomainDeclaration(Declaration):
-    """
-    Domain declaration.
-    """
-    tuples: DomainTuples = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class ParameterDeclaration(Declaration):
-    """
-    Parameter declaration.
-    """
-    pass
-
-@dataclass(frozen=True)
-class VariableDeclaration(Declaration):
-    """
-    Variable declaration.
-    """
-    pass
 
 
 @dataclass(frozen=True)
@@ -131,10 +55,96 @@ class EquationDeclaration(Declaration):
     """
     Equation declaration.
     """
+
     pass
 
 
-DeclarationNode = Union[
+@dataclass(frozen=True)
+class NamedDeclaration(Declaration):
+    """
+    Base class for all top-level declarations.
+
+    The common fields are:
+    - `name`: Required unique name of the declared entity.
+
+    """
+
+    name: str
+
+
+@dataclass(frozen=True)
+class MemberDeclaration(NamedDeclaration):
+    """
+    Member declaration.
+    """
+
+    pass
+
+
+@dataclass(frozen=True)
+class UnitDeclaration(NamedDeclaration):
+    """
+    Unit declaration.
+    """
+
+    pass
+
+
+@dataclass(frozen=True)
+class DimensionDeclaration(NamedDeclaration):
+    """
+    Dimension declaration.
+
+    Pass 1:
+        - `members` is left empty.
+        - `expression` holds the raw dimension expression AST.
+
+    Later semantic passes:
+        - evaluate `dimension_expression`
+        - fill `dimension_members` with the resolved member names.
+    """
+
+    members: Tuple[str]
+    expression: Optional[DimensionExpression] = None
+
+
+@dataclass(frozen=True)
+class CategoryDeclaration(NamedDeclaration):
+    """
+    Category declaration (a specialized dimension).
+    """
+
+    pass
+
+
+@dataclass(frozen=True)
+class DomainDeclaration(NamedDeclaration):
+    """
+    Domain declaration.
+    """
+
+    tuples: DomainTuples = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ParameterDeclaration(NamedDeclaration):
+    """
+    Parameter declaration.
+    """
+
+    pass
+
+
+@dataclass(frozen=True)
+class VariableDeclaration(NamedDeclaration):
+    """
+    Variable declaration.
+    """
+
+    pass
+
+
+AnyDeclaration = Union[
     MemberDeclaration,
     CategoryDeclaration,
     DimensionDeclaration,
@@ -149,8 +159,7 @@ DeclarationNode = Union[
 @dataclass(frozen=True)
 class Model:
     """
-    Root node: a flat list of declarations.
+    The model consists of a flat list of declarations.
     """
-    declarations: List[DeclarationNode]
 
-
+    declarations: List[AnyDeclaration]

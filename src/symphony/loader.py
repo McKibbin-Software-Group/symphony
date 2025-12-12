@@ -4,8 +4,16 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 from lark import Discard, Token, UnexpectedInput, v_args
-from symphony import SymphonyFiles, SymphonyFile, SourcePosition, symphony_position, SymphonyTree, symphony_parser
+from symphony import (
+    SymphonyFiles,
+    SymphonyFile,
+    SourcePosition,
+    symphony_position,
+    SymphonyTree,
+    symphony_parser,
+)
 from symphony.base_transformer import BaseTransformer
+
 
 class Loader:
 
@@ -22,14 +30,14 @@ class Loader:
     def load_model(self, root_file_path: Path) -> SymphonyFiles:
         """
         ### Overview
-        
+
         Load a complete Symphony model from the given root file path,
         processing all included files recursively.
-        
+
         ### Arguments
-        
+
         - `root_file_path`: Path to the root Symphony file.
-        
+
         """
         root_file_path = root_file_path.resolve()
         self._load_recursive(root_file_path)
@@ -44,14 +52,14 @@ class Loader:
     ) -> None:
         """
         ### Overview
-        
+
         Recursively load Symphony files starting from the given file path,
         processing all included files.
-        
+
         ### Arguments
-        
+
         - `file_path`: Path to the Symphony file to load.
-        
+
         """
         file_path = file_path.resolve()
         if file_path in self.modules_by_path:
@@ -59,7 +67,9 @@ class Loader:
 
         logging.info(f"Loading Symphony file: {file_path}")
 
-        symphony_tree: SymphonyTree = self.parse_symphony_tree_from_file(file_path=file_path)
+        symphony_tree: SymphonyTree = self.parse_symphony_tree_from_file(
+            file_path=file_path
+        )
         transformer: IncludeTransformer = IncludeTransformer(file_path=file_path)
         transformer.transform(symphony_tree.parse_tree)
         module = SymphonyFile(
@@ -74,34 +84,38 @@ class Loader:
     def parse_symphony_tree_from_file(self, file_path: Path) -> SymphonyTree:
         """
         ### Overview
-        
+
         Parse a Symphony file from the given file path into a SymphonyTree.
-        
+
         ### Arguments
-        
+
         - `file_path`: Path to the Symphony file to parse.
-        
+
         """
         try:
-            return SymphonyTree(self.parser.parse(self.read_symphony_file(file_path=file_path)), file_path)
+            return SymphonyTree(
+                self.parser.parse(self.read_symphony_file(file_path=file_path)),
+                file_path,
+            )
         except UnexpectedInput as err:
             assert False, f"Failed to parse Lark Tree from {file_path}\n"
 
     def read_symphony_file(self, file_path: Path) -> str:
         """
         ### Overview
-        
+
         Read the contents of a Symphony file from the given file path.
-        
+
         ### Arguments
-        
+
         - `file_path`: Path to the Symphony file to read.
-        
+
         """
         try:
             return file_path.read_text(encoding="utf-8")
         except OSError as exception:
             assert False, f"Failed to read Symphony file {file_path}: {exception}\n"
+
 
 @v_args(meta=True)
 class IncludeTransformer(BaseTransformer):
@@ -109,27 +123,29 @@ class IncludeTransformer(BaseTransformer):
     ### Overview
 
     Transformer that extracts details about included Symphony files from a Lark parse tree.
-    
+
     This is used by the Loader to identify and process included files.
     """
 
     def __init__(self, file_path: Path) -> None:
         """
         ### Overview
-        
+
         Initialize the IncludeTransformer with the path of the Symphony file being transformed.
-        
+
         ### Arguments
-        
+
         - `file_path`: Path to the Symphony file being transformed.
-        
+
         ### Exceptions
-        
+
         Raises an assertion error if file_path is None or not a Path instance.
         """
         super().__init__()
         assert file_path is not None, "file_path cannot be None"
-        assert isinstance(file_path, Path), "file_path must be an instance of pathlib.Path"
+        assert isinstance(
+            file_path, Path
+        ), "file_path must be an instance of pathlib.Path"
         self.file_path = file_path
 
     @property
@@ -168,14 +184,20 @@ class IncludeTransformer(BaseTransformer):
         Raises an assertion error if the included file does not exist.
 
         """
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         file_path: Path = children[0]
-        assert file_path.exists(), f"Included file does not exist: {file_path} (See line {position.line} in {self.file_path})"
+        assert (
+            file_path.exists()
+        ), f"Included file does not exist: {file_path} (See line {position.line} in {self.file_path})"
         self.included_files.add(file_path)
-        return self.__default__(data="include_declaration", children=children, meta=meta)
+        return self.__default__(
+            data="include_declaration", children=children, meta=meta
+        )
 
     def INCLUDE(self, token: Token) -> Any:
-        """ 
+        """
         Discard the INCLUDE token.
         """
         return Discard

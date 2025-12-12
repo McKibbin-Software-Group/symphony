@@ -10,6 +10,7 @@ import json
 from lark import Lark, Tree, Token
 from lark import UnexpectedInput
 
+
 def configure_logging(level: str = "DEBUG") -> None:
     """
     Configure root logging once, with filename and line number.
@@ -80,7 +81,10 @@ def convert_tree_to_jsonable(node) -> Any:
             "column": getattr(node, "column", None),
         }
     if is_dataclass(node):
-        return {f.name: convert_tree_to_jsonable(getattr(node, f.name)) for f in fields(node)}
+        return {
+            f.name: convert_tree_to_jsonable(getattr(node, f.name))
+            for f in fields(node)
+        }
     if isinstance(node, Enum):
         return node.value
     if isinstance(node, list):
