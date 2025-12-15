@@ -1,6 +1,9 @@
 import ast
+import logging
 from pathlib import Path
 from lark import Discard, Token, Transformer, v_args
+
+from symphony import DiagnosticBag
 
 
 @v_args(meta=True)
@@ -13,7 +16,7 @@ class BaseTransformer(Transformer):
 
     """
 
-    def __init__(self, file_path: Path) -> None:
+    def __init__(self, file_path: Path, diagnostics: DiagnosticBag) -> None:
         """
         ### Overview
 
@@ -34,6 +37,12 @@ class BaseTransformer(Transformer):
         ), "file_path must be an instance of pathlib.Path"
         self._file_path = file_path
 
+        assert diagnostics is not None, "diagnostics cannot be None"
+        assert isinstance(
+            diagnostics, DiagnosticBag
+        ), "diagnostics must be an instance of DiagnosticBag"
+        self._diagnostics = diagnostics
+
     @property
     def file_path(self) -> Path:
         """
@@ -46,6 +55,18 @@ class BaseTransformer(Transformer):
         - `Path`: The path of the Symphony file.
         """
         return self._file_path
+
+    def diagnostics(self) -> DiagnosticBag:
+        """
+        ### Overview
+
+        Get the DiagnosticBag for collecting diagnostics during transformation.
+
+        ### Returns
+
+        - `DiagnosticBag`: The diagnostic bag.
+        """
+        return self._diagnostics
 
     def parse_escaped_string(self, token: Token) -> str:
         """

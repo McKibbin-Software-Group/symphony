@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, is_dataclass, fields
-from typing import Any, Dict, List, Optional, Set, Tuple
-
+from dataclasses import dataclass, field
+from typing import List, Optional, Tuple, Tuple
 from lark import Token
 from symphony import SourcePosition
 
@@ -47,7 +46,6 @@ class Declaration:
     - `documentation`: Optional documentation string associated with the declaration.
 
     """
-
     position: SourcePosition
     label: Optional[str]
     documentation: Optional[str]
@@ -58,7 +56,6 @@ class EquationDeclaration(Declaration):
     """
     Equation declaration.
     """
-
     pass
 
 
@@ -71,7 +68,6 @@ class NamedDeclaration(Declaration):
     - `name`: Required unique name of the declared entity.
 
     """
-
     name: str
 
 
@@ -80,7 +76,6 @@ class MemberDeclaration(NamedDeclaration):
     """
     Member declaration.
     """
-
     pass
 
 
@@ -89,7 +84,6 @@ class UnitDeclaration(NamedDeclaration):
     """
     Unit declaration.
     """
-
     pass
 
 
@@ -116,7 +110,6 @@ class CategoryDeclaration(DimensionDeclaration):
     """
     Category declaration (a specialized dimension).
     """
-
     pass
 
 

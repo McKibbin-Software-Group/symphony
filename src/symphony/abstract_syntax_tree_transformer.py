@@ -19,13 +19,13 @@ from symphony import (
     symphony_position,
 )
 from symphony.abstract_syntax_tree import (
+    TypedList,
     DimensionDeclaration,
     Modules,
     AnyDeclaration,
     MemberDeclaration,
     CategoryDeclaration,
     Module,
-    TypedList,
     StringWithPosition,
 )
 from symphony.base_transformer import BaseTransformer
@@ -51,10 +51,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
           * check category coverage or uniqueness,
           * check for duplicate names.
     """
-
-    def __init__(self, *, file_path: Path, diagnostics: DiagnosticBag):
-        super().__init__(file_path=file_path)
-        self.diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
 
     # ---------- leaf grammar rules ----------
 
@@ -238,7 +234,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
     # ---------- top-level rule ----------
 
-    def start(self, meta: Any, children: List[AnyDeclaration]) -> Modules:
+    def start(self, meta: Any, children: List[AnyDeclaration]) -> Module:
         """
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
@@ -294,7 +290,7 @@ def load_modules(root_file_path: Path) -> SymphonyFiles:
 
     """
     loader_result: LoaderResult = Loader().load_symphony_files(
-        root_file_path=root_file_path
+        root_file_path=root_file_path,
     )
 
     if loader_result.diagnostics.has_errors():

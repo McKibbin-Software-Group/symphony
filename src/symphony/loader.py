@@ -104,7 +104,9 @@ class Loader:
                 self.diagnostics.raise_if_errors()
             return
 
-        transformer: IncludeTransformer = IncludeTransformer(file_path=file_path, diagnostics=self.diagnostics)
+        transformer: IncludeTransformer = IncludeTransformer(
+            file_path=file_path, diagnostics=self.diagnostics
+        )
         transformer.transform(symphony_file.tree)
 
         # Store the successfully parsed file even if it had include diagnostics.
@@ -221,9 +223,8 @@ class IncludeTransformer(BaseTransformer):
     """
 
     def __init__(self, *, file_path: Path, diagnostics: DiagnosticBag) -> None:
-        super().__init__(file_path=file_path)
+        super().__init__(file_path=file_path, diagnostics=diagnostics)
         self._included_files: set[Path] = set()
-        self.diagnostics = diagnostics
 
     @property
     def included_files(self) -> set[Path]:
