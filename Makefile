@@ -32,7 +32,9 @@ test:
 	pytest -q tests -k "$(TEST)"
 
 categories:
-	pytest -q tests -k "test_domains_json"
+	pytest -q tests -k test_categories_abstract_syntax_tree
+	
+#"test_domains_json"
 
 categories_with_syntax_errors:
 	pytest -q tests -k "test_categories_with_syntax_errors_abstract_syntax_tree"

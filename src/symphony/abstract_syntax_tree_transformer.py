@@ -52,7 +52,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
           * check for duplicate names.
     """
 
-    def __init__(self, file_path: Path, *, diagnostics: DiagnosticBag):
+    def __init__(self, *, file_path: Path, diagnostics: DiagnosticBag):
         super().__init__(file_path=file_path)
         self.diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
 
@@ -293,19 +293,21 @@ def load_modules(root_file_path: Path) -> SymphonyFiles:
     - `root_file_path`: Path to the root Symphony file.
 
     """
-    result: LoaderResult = Loader().load_symphony_files(
+    loader_result: LoaderResult = Loader().load_symphony_files(
         root_file_path=root_file_path
     )
 
-    if result.diagnostics.has_errors():
-        report_diagnostics(result.diagnostics.diagnostics)
-        raise SymphonyDiagnosticsException(result.diagnostics.diagnostics)
+    if loader_result.diagnostics.has_errors():
+        report_diagnostics(loader_result.diagnostics.diagnostics)
+        raise SymphonyDiagnosticsException(loader_result.diagnostics.diagnostics)
 
     model: Modules = Modules()
-    for symphony_file in result.symphony_files.file_list:
+    diagnostics: DiagnosticBag = loader_result.diagnostics
+    for symphony_file in loader_result.symphony_files.file_list:
         try:
             module: Module = AbstractSyntaxTreeTransformer(
-                symphony_file.file_path
+                file_path=symphony_file.file_path,
+                diagnostics=loader_result.diagnostics,
             ).transform(symphony_file.tree)
         except UnexpectedInput as err:
             assert (
@@ -342,9 +344,10 @@ def load_modules(loader_result: LoaderResult) -> ASTLoaderResult:
     for symphony_file in loader_result.symphony_files.file_list:
         try:
             module: Module = AbstractSyntaxTreeTransformer(
-                symphony_file.file_path,
+                file_path=symphony_file.file_path,
                 diagnostics=diagnostics,
             ).transform(symphony_file.tree)
+            modules.append(module)
         except UnexpectedInput as err:
             # The module does not get added to the set of modules because it could not be transformed into an AST.
             # TODO: improve error reporting here - check for how this should be done to respond to error details in transformer.
@@ -361,14 +364,6 @@ def load_modules(loader_result: LoaderResult) -> ASTLoaderResult:
                     help_text="Check for errors near this location.",
                 )
             )
-
-        # If your transformer already returns a Module with file_path, you do not need this wrapper.
-        modules.append(
-            Module(
-                file_path=symphony_file.file_path,
-                declarations=tuple(module.declarations),
-            )
-        )
 
     return ASTLoaderResult(
         modules=Modules(modules=tuple(modules)),
