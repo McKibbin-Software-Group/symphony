@@ -1,16 +1,35 @@
 import ast
+from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from turtle import position
+from typing import Any, Dict, Tuple
 from lark import Discard, Token, UnexpectedInput, v_args
 from symphony import (
+    Diagnostic,
+    DiagnosticBag,
+    DiagnosticLabel,
+    DiagnosticSeverity,
     SymphonyFiles,
     SymphonyFile,
     SourcePosition,
     symphony_position,
     symphony_parser,
+    errors,
 )
 from symphony.base_transformer import BaseTransformer
+
+
+@dataclass(frozen=True)
+class LoaderResult:
+    """
+    This is the result returned by the loader after loading Symphony files.
+
+    It supports both the loaded Symphony files and any diagnostics encountered.
+    """
+
+    symphony_files: SymphonyFiles
+    diagnostics: DiagnosticBag
 
 
 class Loader:
@@ -24,8 +43,14 @@ class Loader:
         """
         self.parser = symphony_parser()
         self.symphony_files_indexed_by_path: Dict[Path, SymphonyFile] = {}
+        self.diagnostics: DiagnosticBag = DiagnosticBag()
 
-    def load_symphony_files(self, root_file_path: Path) -> SymphonyFiles:
+    def load_symphony_files(
+        self,
+        root_file_path: Path,
+        *,
+        fail_fast: bool = False,
+    ) -> LoaderResult:
         """
         ### Overview
 
@@ -38,15 +63,21 @@ class Loader:
 
         """
         root_file_path = root_file_path.resolve()
-        self._load_recursive(root_file_path)
+        self._load_recursive(file_path=root_file_path, fail_fast=fail_fast)
 
-        return SymphonyFiles(
-            files=self.symphony_files_indexed_by_path,
+        if fail_fast:
+            self.diagnostics.raise_if_errors()
+
+        return LoaderResult(
+            symphony_files=SymphonyFiles(files=self.symphony_files_indexed_by_path),
+            diagnostics=self.diagnostics,
         )
 
     def _load_recursive(
         self,
+        *,
         file_path: Path,
+        fail_fast: bool = False,
     ) -> None:
         """
         ### Overview
@@ -68,18 +99,22 @@ class Loader:
         symphony_file: SymphonyFile = self.parse_symphony_tree_from_file(
             file_path=file_path
         )
+        if symphony_file is None:
+            if fail_fast:
+                self.diagnostics.raise_if_errors()
+            return
+
         transformer: IncludeTransformer = IncludeTransformer(file_path=file_path)
         transformer.transform(symphony_file.tree)
-        symphony_file: SymphonyFile = SymphonyFile(
-            file_path=file_path,
-            tree=symphony_file.tree,
-        )
+
+        # Store the successfully parsed file even if it had include diagnostics.
         self.symphony_files_indexed_by_path[file_path] = symphony_file
+
         for included_file in transformer.included_files:
             if not included_file in self.symphony_files_indexed_by_path:
-                self._load_recursive(included_file)
+                self._load_recursive(file_path=included_file, fail_fast=fail_fast)
 
-    def parse_symphony_tree_from_file(self, file_path: Path) -> SymphonyFile:
+    def parse_symphony_tree_from_file(self, *, file_path: Path) -> SymphonyFile:
         """
         ### Overview
 
@@ -89,16 +124,44 @@ class Loader:
 
         - `file_path`: Path to the Symphony file to parse.
 
-        """
-        try:
-            return SymphonyFile(
-                file_path=file_path,
-                tree=self.parser.parse(self.read_symphony_file_contents(file_path=file_path)),
-            )
-        except UnexpectedInput as err:
-            assert False, f"Failed to parse Lark Tree from {file_path}\n"
+        ### Returns
 
-    def read_symphony_file_contents(self, file_path: Path) -> str:
+        The SymphonyFile object containing the parse tree, or None if parsing failed.
+
+        """
+        source_text = self.read_symphony_file_contents(file_path=file_path)
+        if source_text is None:
+            return None
+
+        try:
+            tree = self.parser.parse(source_text)
+            return SymphonyFile(file_path=file_path, tree=tree)
+        except UnexpectedInput as exception:
+            position = SourcePosition(
+                file_path=file_path,
+                line=int(getattr(exception, "line", 1) or 1),
+                column=int(getattr(exception, "column", 1) or 1),
+            )
+            expected = getattr(exception, "expected", None)
+            expected_text = ""
+            if expected:
+                expected_text = f" Expected one of: {', '.join(sorted(str(item) for item in expected))}."
+            self.diagnostics.add(
+                Diagnostic(
+                    code=errors.syntax_error,
+                    severity=DiagnosticSeverity.error,
+                    message=f"Failed to parse file include.{expected_text}",
+                    primary_label=DiagnosticLabel(
+                        position=position,
+                        message="The error occurred near here.",
+                        is_primary=True,
+                    ),
+                    help_text="Check for file path errors in includes near this location.",
+                )
+            )
+            return None
+
+    def read_symphony_file_contents(self, *, file_path: Path) -> str:
         """
         ### Overview
 
@@ -108,11 +171,43 @@ class Loader:
 
         - `file_path`: Path to the Symphony file to read.
 
+        ### Returns
+
+        The contents of the Symphony file as a string, or None if reading failed.
+
         """
+        if not file_path.exists():
+            self.diagnostics.add(
+                Diagnostic(
+                    code=errors.missing_file,
+                    severity=DiagnosticSeverity.error,
+                    message=f"Symphony file does not exist: {file_path}",
+                    primary_label=DiagnosticLabel(
+                        position=SourcePosition(file_path=file_path, line=1, column=1),
+                        message="This file does not exist.",
+                        is_primary=True,
+                    ),
+                    help_text="Check the files that are included in the model.",
+                )
+            )
+
         try:
             return file_path.read_text(encoding="utf-8")
         except OSError as exception:
-            assert False, f"Failed to read Symphony file {file_path}: {exception}\n"
+            self.diagnostics.add(
+                Diagnostic(
+                    code=errors.unreadable_file,
+                    severity=DiagnosticSeverity.error,
+                    message=f"Symphony file could not be read: {file_path}",
+                    primary_label=DiagnosticLabel(
+                        position=SourcePosition(file_path=file_path, line=1, column=1),
+                        message="This file could not be read.",
+                        is_primary=True,
+                    ),
+                    help_text="Check the permissions for the files that are included in the model.",
+                )
+            )
+            return None
 
 
 @v_args(meta=True)
@@ -125,6 +220,11 @@ class IncludeTransformer(BaseTransformer):
     This is used by the Loader to identify and process included files.
     """
 
+    def __init__(self, *, file_path: Path, diagnostics: DiagnosticBag) -> None:
+        super().__init__(file_path=file_path)
+        self._included_files: set[Path] = set()
+        self.diagnostics = diagnostics
+
     @property
     def included_files(self) -> set[Path]:
         """
@@ -132,8 +232,6 @@ class IncludeTransformer(BaseTransformer):
 
         Set of the files that are included by the Symphony file being transformed.
         """
-        if not hasattr(self, "_included_files"):
-            self._included_files = set()
         return self._included_files
 
     ###############################################
@@ -164,11 +262,44 @@ class IncludeTransformer(BaseTransformer):
         position: SourcePosition = symphony_position(
             file_path=self.file_path, token_or_meta=meta
         )
+
+        if len(children) != 1 or not isinstance(children[0], Path):
+            self.diagnostics.add(
+                Diagnostic(
+                    code=errors.include_error,
+                    severity=DiagnosticSeverity.error,
+                    message="Invalid include declaration.",
+                    primary_label=DiagnosticLabel(
+                        position=position,
+                        message="The include path could not be interpreted as a file path.",
+                        is_primary=True,
+                    ),
+                    help_text='Use: include "relative/or/absolute/path.sym".',
+                )
+            )
+            return self.__default__(
+                data="include_declaration", children=children, meta=meta
+            )
+
         file_path: Path = children[0]
-        assert (
-            file_path.exists()
-        ), f"Included file does not exist: {file_path} (See line {position.line} in {self.file_path})"
-        self.included_files.add(file_path)
+
+        if file_path.exists():
+            self.included_files.add(file_path)
+        else:
+            self.diagnostics.add(
+                Diagnostic(
+                    code=errors.missing_file,
+                    severity=DiagnosticSeverity.error,
+                    message="Included Symphony file does not exist.",
+                    primary_label=DiagnosticLabel(
+                        position=position,
+                        message=f'Included Symphony file not found: "{file_path}".',
+                        is_primary=True,
+                    ),
+                    help_text="Check the path is correct, relative to the including file's directory.",
+                )
+            )
+
         return self.__default__(
             data="include_declaration", children=children, meta=meta
         )

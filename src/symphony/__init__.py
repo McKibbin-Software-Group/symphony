@@ -1,6 +1,11 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Iterable, Optional, Sequence
+from enum import Enum
+from pathlib import Path
 from dataclasses import dataclass
 from importlib import resources
-from typing import Any, Dict, List
 from lark import Lark, Tree
 from pathlib import Path
 
@@ -28,7 +33,7 @@ class SourcePosition:
 
         String in the format 'file_path:line:column'.
         """
-        return f"{self.file_path.name} line {self.line} column {self.column}"
+        return f"{self.file_path} line {self.line} column {self.column}"
 
     def to_dictionary(self) -> Dict[str, Any]:
         """
@@ -43,10 +48,127 @@ class SourcePosition:
             "line": self.line,
             "column": self.column,
         }
-    
 
 
-        
+class DiagnosticSeverity(str, Enum):
+    error = "error"
+    warning = "warning"
+    note = "note"
+
+
+@dataclass(frozen=True)
+class DiagnosticLabel:
+    """
+    A labelled span (or point) in source code.
+
+    Use:
+      - primary label: the main location of the issue
+      - secondary labels: related locations (e.g., previous definition)
+    """
+
+    position: SourcePosition
+    message: str
+    is_primary: bool = False
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+    code: str
+    severity: DiagnosticSeverity
+    message: str
+    primary_label: DiagnosticLabel
+    secondary_labels: Sequence[DiagnosticLabel] = field(default_factory=tuple)
+    help_text: Optional[str] = None
+
+    def is_error(self) -> bool:
+        return self.severity == DiagnosticSeverity.error
+
+
+@dataclass
+class DiagnosticBag:
+    diagnostics: list[Diagnostic] = field(default_factory=list)
+
+    def add(self, diagnostic: Diagnostic) -> None:
+        self.diagnostics.append(diagnostic)
+
+    def extend(self, diagnostics: Iterable[Diagnostic]) -> None:
+        self.diagnostics.extend(diagnostics)
+
+    def has_errors(self) -> bool:
+        return any(diagnostic.is_error() for diagnostic in self.diagnostics)
+
+    def raise_if_errors(self) -> None:
+        if self.has_errors():
+            raise SymphonyDiagnosticsException(self.diagnostics)
+
+
+class SymphonyException(Exception):
+    """
+    Raised only when you choose 'fail-fast'. Prefer collecting diagnostics.
+    """
+
+    def __init__(self, diagnostic: Diagnostic) -> None:
+        super().__init__(diagnostic.message)
+        self.diagnostic = diagnostic
+
+
+class SymphonyDiagnosticsException(Exception):
+    def __init__(self, diagnostics: Sequence[Diagnostic]) -> None:
+        super().__init__("Symphony compilation failed with diagnostics.")
+        self.diagnostics = diagnostics
+
+
+def format_diagnostic(diagnostic: Diagnostic) -> str:
+    """
+    ### Overview
+
+    Format a Diagnostic object into a human-readable string.
+
+    ### Arguments
+
+    - `diagnostic`: Diagnostic object to format.
+
+    ### Returns
+
+    Formatted string representation of the diagnostic.
+    """
+    lines: list[str] = []
+    lines.append(
+        f"{diagnostic.primary_label.position}: {diagnostic.severity.value} {diagnostic.code}: {diagnostic.message}"
+    )
+    lines.append(f"  -> {diagnostic.primary_label.message}")
+    for label in diagnostic.secondary_labels:
+        lines.append(f"  = {label.position}: {label.message}")
+    if diagnostic.help_text is not None:
+        lines.append(f"  help: {diagnostic.help_text}")
+    return "\n".join(lines)
+
+
+def report_diagnostics(diagnostics: Sequence[Diagnostic]) -> None:
+    """
+    ### Overview
+
+    Report diagnostics to the console in a sorted order.
+
+    ### Arguments
+
+    - `diagnostics`: Sequence of Diagnostic objects to report.
+    """
+
+    sorted_diagnostics = sorted(
+        diagnostics,
+        key=lambda diagnostic: (
+            diagnostic.severity.value,
+            str(diagnostic.primary_label.position.file_path),
+            diagnostic.primary_label.position.line,
+            diagnostic.primary_label.position.column,
+            diagnostic.code,
+        ),
+    )
+    for diagnostic in sorted_diagnostics:
+        print(format_diagnostic(diagnostic))
+        print()
+
 
 def symphony_parser() -> Lark:
     """
@@ -126,9 +248,7 @@ class SymphonyFile:
         self._file_path: Path = file_path
 
         assert tree is not None, "tree cannot be None"
-        assert isinstance(
-            tree, Tree
-        ), "tree must be an instance of Tree"
+        assert isinstance(tree, Tree), "tree must be an instance of Tree"
         self._tree: Tree = tree
 
     @property
@@ -143,7 +263,7 @@ class SymphonyFile:
         Path to the Symphony file.
         """
         return self._file_path
-    
+
     @property
     def tree(self) -> Tree:
         """
@@ -176,7 +296,7 @@ class SymphonyFiles:
             files, dict
         ), "files must be a dictionary mapping Path to SymphonyFile"
         self._files = files
-    
+
     @property
     def files(self) -> Dict[Path, SymphonyFile]:
         """
@@ -189,7 +309,6 @@ class SymphonyFiles:
         Dictionary mapping from Path to SymphonyFile.
         """
         return self._files
-
 
     @property
     def file_list(self) -> List[SymphonyFile]:

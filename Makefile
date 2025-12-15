@@ -32,20 +32,22 @@ test:
 	pytest -q tests -k "$(TEST)"
 
 categories:
-	pytest -q tests -k "test_categories_abstract_syntax_tree"
+	pytest -q tests -k "test_domains_json"
+
+categories_with_syntax_errors:
+	pytest -q tests -k "test_categories_with_syntax_errors_abstract_syntax_tree"
 
 dimensions:
-	pytest -q tests -k "test_dimensions_json" 
-
+	pytest -q tests -k "test_dimensions_abstract_syntax_tree"
+	
 domains:
-	pytest -q tests -k "test_domains_json" 
+	pytest -q tests -k "test_domains_abstract_syntax_tree"
 
 variables:
-	pytest -q tests -k "test_variables_json"
+	pytest -q tests -k "test_variables_abstract_syntax_tree"
 
 equations:
-	pytest -q tests -k "test_equations_json" 
-
+	pytest -q tests -k "test_equations_abstract_syntax_tree" 
 
 listtests:
 	py.test tests -q --collect-only	

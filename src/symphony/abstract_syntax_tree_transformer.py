@@ -1,23 +1,35 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import ast
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple
-from lark import  Token, UnexpectedInput, v_args
-from symphony import SourcePosition, SymphonyFiles, symphony_position
+from lark import Token, UnexpectedInput, v_args
+from symphony import (
+    Diagnostic,
+    DiagnosticBag,
+    DiagnosticLabel,
+    DiagnosticSeverity,
+    SourcePosition,
+    SymphonyDiagnosticsException,
+    SymphonyFiles,
+    errors,
+    report_diagnostics,
+    symphony_position,
+)
 from symphony.abstract_syntax_tree import (
     DimensionDeclaration,
-    Model,
+    Modules,
     AnyDeclaration,
     MemberDeclaration,
     CategoryDeclaration,
     Module,
-    DimensionTerm,
+    TypedList,
     StringWithPosition,
 )
 from symphony.base_transformer import BaseTransformer
-from symphony.loader import Loader
+from symphony.loader import Loader, LoaderResult
 
 # Builds the Pass 1 parser and transformer for Symphony.
 # It loads the packaged grammar, parses the model declaration into a Lark parse tree,
@@ -40,9 +52,22 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
           * check for duplicate names.
     """
 
+    def __init__(self, file_path: Path, *, diagnostics: DiagnosticBag):
+        super().__init__(file_path=file_path)
+        self.diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
+
     # ---------- leaf grammar rules ----------
 
     def label(self, meta: Any, children: List[Token]) -> StringWithPosition:
+        """
+        ### Overview
+
+        Label string handler.
+
+        ### Returns
+
+        A tuple of the label string and its source position.
+        """
         assert len(children) == 1, f"Expected one label but found {len(children)}"
         token = children[0]
         return ast.literal_eval(token.value), symphony_position(self.file_path, meta)
@@ -51,39 +76,51 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         """
         ### Overview
         Documentation Markdown handler.
+
+        ### Returns
+
+        A tuple of the documentation string and its source position.
         """
         assert len(children) == 1
-        
+
         # strip leading and trailing """ of TRIPLE_STRING
-        text: str = children[0].value[3:-3]  
+        text: str = children[0].value[3:-3]
 
         # Remove leading and trailing whitespace/newlines
         text = text.strip()
 
         return (text, symphony_position(self.file_path, meta))
 
-    def name_list(self, meta: Any, children: List[Token]) -> DimensionTerm:
+    def name_list(self, meta: Any, children: List[Token]) -> TypedList:
         """
         ### Overview
 
-        Returns a list of NAME tokens.
-        
+        A tuple with "list" in the first position and the tuple of name tokens in the second position.
+
         e.g.
-        
-        [Token('NAME', 'red'), Token('NAME', 'green'), Token('NAME', 'blue')]
-        
+
+        ```python
+        ("list", [Token('NAME', 'red'), Token('NAME', 'green'), Token('NAME', 'blue')])
+        ```
         """
-        return ("list", tuple(children))
-        
-    def member_list(self, meta: Any, children: List[Any]) -> DimensionTerm:
+        return ("list", list(children))
+
+    def member_list(self, meta: Any, children: List[Any]) -> TypedList:
         """
-        children = ["[", name_list, "]"]  (brackets may or may not appear depending on BaseTransformer)
+        ### Overview
+
+        Extract the list of member names from the member_list rule.
+
+        This does nothing because what we need is created by name_list already.
+
+        ### Returns
+
+        A tuple with "list" in the first position and the list of members in the second position.
         """
-        # name_list already returns ("list", [...])
+        # position = symphony_position(file_path=self.file_path, token_or_meta=meta)
         for child in children:
             if isinstance(child, tuple) and child[0] == "list":
                 return child
-        position = symphony_position(file_path=self.file_path, token_or_meta=meta)
         raise AssertionError("member_list did not contain a list term")
 
     # ---------- declaration rules ----------
@@ -96,10 +133,12 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         ### Exceptions
         Raises an assertion error if the token is not a NAME token.
         """
-        assert isinstance(token, Token) and token.type == "NAME", "Expected a NAME token"
+        assert (
+            isinstance(token, Token) and token.type == "NAME"
+        ), "Expected a NAME token"
         return token.value
-    
-    def get_label(self,label_with_position: StringWithPosition) -> str:
+
+    def get_label(self, label_with_position: StringWithPosition) -> str:
         """
         ### Overview
 
@@ -108,9 +147,10 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         ### Exceptions
         Raises an assertion error if the label child is not a string.
         """
-        assert isinstance(label_with_position, tuple) and isinstance(label_with_position[0], str), "Expected a label string"
+        assert isinstance(label_with_position, tuple) and isinstance(
+            label_with_position[0], str
+        ), "Expected a label string"
         return label_with_position[0]
-
 
     def member_declaration(self, meta: Any, children: List[Any]) -> MemberDeclaration:
         """
@@ -118,9 +158,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
         Member declaration handler.
         """
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
-
-        logging.debug(children)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         name: str = self.get_name(children[1])
         label: str = self.get_label(children[2])
         documentation, list_term = self._pick_doc_and_list(children[3:])
@@ -132,13 +172,17 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             documentation=documentation,
         )
 
-    def category_declaration(self, meta: Any, children: List[Any]) -> CategoryDeclaration:
+    def category_declaration(
+        self, meta: Any, children: List[Any]
+    ) -> CategoryDeclaration:
         """
         ### Overview
 
         Category declaration handler.
         """
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         name: str = self.get_name(children[1])
         label: str = children[2][0]
         documentation, list_term = self._pick_doc_and_list(children[3:])
@@ -159,13 +203,17 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             members=members,
         )
 
-    def dimension_declaration(self, meta: Any, children: List[Any]) -> DimensionDeclaration:
+    def dimension_declaration(
+        self, meta: Any, children: List[Any]
+    ) -> DimensionDeclaration:
         """
         ### Overview
 
         Dimension declaration handler.
         """
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         name: str = self.get_name(token=children[1])
         label: str = self.get_label(label_with_position=children[2])
         documentation, list_term = self._pick_doc_and_list(children[3:])
@@ -180,45 +228,44 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             tokens: Iterable[Token] = payload
             members = [tok.value for tok in tokens]
 
-        return CategoryDeclaration(
+        return DimensionDeclaration(
             position=position,
             name=name,
             label=label,
             documentation=documentation,
             members=members,
-        )        
+        )
 
     # ---------- top-level rule ----------
 
-    def start(self, meta: Any, children: List[AnyDeclaration]) -> Model:
+    def start(self, meta: Any, children: List[AnyDeclaration]) -> Modules:
         """
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
         """
         return Module(declarations=children)
 
-
     @staticmethod
     def _pick_doc_and_list(
         extra_items: List[Any],
-    ) -> Tuple[Optional[StringWithPosition], Optional[DimensionTerm]]:
+    ) -> Tuple[Optional[StringWithPosition], Optional[TypedList]]:
         """
         ### Overview
-        
+
         Extract documentation from remaining list terms in a declaration.
-        
+
         ### Arguments
-        
+
         - `extra_items: List[Any]`: The list of extra items to search.
-        
+
         ### Returns
-        
+
         - `Tuple[Optional[Documentation], Optional[DimensionTerm]]`: The extracted documentation and list term.
-        
+
         """
 
         documentation: Optional[StringWithPosition] = None
-        list_term: Optional[DimensionTerm] = None
+        list_term: Optional[TypedList] = None
 
         for item in extra_items:
             if not isinstance(item, tuple):
@@ -231,11 +278,10 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         return documentation, list_term
 
 
-
 # ---------- Create the abstract syntax tree for the whole model ---------
 
 
-def load_model(root_file_path: Path) -> SymphonyFiles:
+def load_modules(root_file_path: Path) -> SymphonyFiles:
     """
     ### Overview
 
@@ -247,12 +293,84 @@ def load_model(root_file_path: Path) -> SymphonyFiles:
     - `root_file_path`: Path to the root Symphony file.
 
     """
-    symphony_files: SymphonyFiles = Loader().load_symphony_files(root_file_path)
-    result: Model = Model()
-    for symphony_file in symphony_files.file_list:
+    result: LoaderResult = Loader().load_symphony_files(
+        root_file_path=root_file_path
+    )
+
+    if result.diagnostics.has_errors():
+        report_diagnostics(result.diagnostics.diagnostics)
+        raise SymphonyDiagnosticsException(result.diagnostics.diagnostics)
+
+    model: Modules = Modules()
+    for symphony_file in result.symphony_files.file_list:
         try:
-            module: Module = AbstractSyntaxTreeTransformer(symphony_file.file_path).transform(symphony_file.tree)
+            module: Module = AbstractSyntaxTreeTransformer(
+                symphony_file.file_path
+            ).transform(symphony_file.tree)
         except UnexpectedInput as err:
-            assert False, f"Failed to analyse declaration in {symphony_file.file_path}\n"
-        result.add(module)
-    return result
+            assert (
+                False
+            ), f"Failed to analyse declaration in {symphony_file.file_path}\n"
+        model.add(module)
+    return model
+
+@dataclass(frozen=True)
+class ASTLoaderResult:
+    """
+    This is the result returned by the abstract syntax tree loader.
+
+    It supports both the loaded modules and any diagnostics encountered.
+    """
+    modules: Modules
+    diagnostics: DiagnosticBag
+
+def load_modules(loader_result: LoaderResult) -> ASTLoaderResult:
+    """
+    ### Overview
+
+    Load a complete Symphony model from the given Lark parse trees.
+
+    ### Arguments
+
+    - `symphony_files`: The SymphonyFiles object containing all the Lark parse trees for the files that
+    will be loaded into the abstract syntax tree.
+
+    """
+
+    modules: list[Module] = []
+    diagnostics: DiagnosticBag = loader_result.diagnostics
+    for symphony_file in loader_result.symphony_files.file_list:
+        try:
+            module: Module = AbstractSyntaxTreeTransformer(
+                symphony_file.file_path,
+                diagnostics=diagnostics,
+            ).transform(symphony_file.tree)
+        except UnexpectedInput as err:
+            # The module does not get added to the set of modules because it could not be transformed into an AST.
+            # TODO: improve error reporting here - check for how this should be done to respond to error details in transformer.
+            diagnostics.diagnostics.add(
+                Diagnostic(
+                    code=errors.syntax_error,
+                    severity=DiagnosticSeverity.error,
+                    message=f"Failed to parse Symphony file. {err}",
+                    primary_label=DiagnosticLabel(
+                        position=SourcePosition(file_path=symphony_file.file_path, line=1, column=1),
+                        message="Symphony error occurred here.",
+                        is_primary=True,
+                    ),
+                    help_text="Check for errors near this location.",
+                )
+            )
+
+        # If your transformer already returns a Module with file_path, you do not need this wrapper.
+        modules.append(
+            Module(
+                file_path=symphony_file.file_path,
+                declarations=tuple(module.declarations),
+            )
+        )
+
+    return ASTLoaderResult(
+        modules=Modules(modules=tuple(modules)),
+        diagnostics=diagnostics,
+    )

@@ -10,7 +10,7 @@ import ast
 from symphony import SourcePosition, symphony_parser, symphony_position
 
 from symphony.abstract_syntax_tree import (
-    Model,
+    Modules,
     AnyDeclaration,
     MemberDeclaration,
     CategoryDeclaration,
@@ -20,7 +20,7 @@ from symphony.abstract_syntax_tree import (
     ParameterDeclaration,
     UnitDeclaration,
     VariableDeclaration,
-    DimensionTerm,
+    TypedList,
     DimensionExpression,
     DomainTerm,
     DomainExpression,
@@ -64,11 +64,11 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
         text = token.value[3:-3]  # strip leading and trailing """ of TRIPLE_STRING
         return text, symphony_position(token)
 
-    def name_list(self, meta: Any, items: List[Token]) -> DimensionTerm:
+    def name_list(self, meta: Any, items: List[Token]) -> TypedList:
         # list of entity names
         return ("list", list(items))
 
-    def dimension_reference(self, meta: Any, items: List[Token]) -> DimensionTerm:
+    def dimension_reference(self, meta: Any, items: List[Token]) -> TypedList:
         assert len(items) == 1
         tok = items[0]
         name = tok.value
@@ -81,20 +81,20 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
             ("dimension_expression", first_term, [(op, term), ...])
         """
         if not items:
-            empty: DimensionTerm = ("list", [])
+            empty: TypedList = ("list", [])
             return ("dimension_expression", empty, [])
 
-        first_term: DimensionTerm = items[0]
-        rest: List[Tuple[str, DimensionTerm]] = []
+        first_term: TypedList = items[0]
+        rest: List[Tuple[str, TypedList]] = []
         i = 1
         while i < len(items):
             op_token: Token = items[i]
-            term: DimensionTerm = items[i + 1]
+            term: TypedList = items[i + 1]
             rest.append((op_token.value, term))
             i += 2
         return ("dimension_expression", first_term, rest)
 
-    def dimension_term(self, meta: Any, items: List[Any]) -> DimensionTerm:
+    def dimension_term(self, meta: Any, items: List[Any]) -> TypedList:
         # Forward the term built by name_list or dimension_reference
         assert len(items) == 1
         return items[0]
@@ -163,24 +163,24 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
     @staticmethod
     def _pick_doc_and_list(
         extra_items: List[Any],
-    ) -> Tuple[Optional[StringWithPosition], Optional[DimensionTerm]]:
+    ) -> Tuple[Optional[StringWithPosition], Optional[TypedList]]:
         """
         ### Overview
-        
+
         Extract documentation from remaining list terms in a declaration.
-        
+
         ### Arguments
-        
+
         - `extra_items: List[Any]`: The list of extra items to search.
-        
+
         ### Returns
-        
+
         - `Tuple[Optional[Documentation], Optional[DimensionTerm]]`: The extracted documentation and list term.
-        
+
         """
 
         documentation: Optional[StringWithPosition] = None
-        list_term: Optional[DimensionTerm] = None
+        list_term: Optional[TypedList] = None
 
         for item in extra_items:
             if not isinstance(item, tuple):
@@ -221,7 +221,6 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
             documentation=documentation[0] if documentation else None,
             dimension_members=members,
         )
-
 
         return self._build_category(
             position, name_token, label_text, label_pos, list_term, documentation
@@ -276,7 +275,6 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
         return self._build_other(
             kind, position, name_token, label_text, label_pos, documentation
         )
-
 
         return self.other_declaration("member", meta, items)
 
@@ -341,7 +339,7 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
         name_token: Token,
         label_text: str,
         label_position: SourcePosition,
-        list_term: Optional[DimensionTerm],
+        list_term: Optional[TypedList],
         documentation: Optional[StringWithPosition],
     ) -> CategoryDeclaration:
         """
@@ -426,21 +424,21 @@ class AbstractSyntaxTreeTransformerOriginal(BaseTransformer):
 
     # ---------- top-level rule ----------
 
-    def start(self, meta: Any, items: List[AnyDeclaration]) -> Model:
+    def start(self, meta: Any, items: List[AnyDeclaration]) -> Modules:
         """
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
         """
-        return Model(declarations=items)
+        return Modules(declarations=items)
 
 
 # ---------- parser helpers for Pass 1 - creating the abstract syntax tree ---------
 
 
-def parse_declarations(text: str) -> Model:
+def parse_declarations(text: str) -> Modules:
     """
     Parse source text into a Program AST using the Pass 1 transformer.
     """
     tree: Tree = symphony_parser().parse(text)
-    program: Model = AbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
+    program: Modules = AbstractSyntaxTreeTransformer().transform(tree)  # type: ignore[assignment]
     return program

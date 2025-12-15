@@ -6,7 +6,7 @@ from symphony.abstract_syntax_tree import (
     CategoryDeclaration,
     AnyDeclaration,
     DimensionDeclaration,
-    Model,
+    Modules,
 )
 
 
@@ -32,7 +32,7 @@ def model_to_tree(root: Any, show_position: bool = False) -> str:
     return "\n".join(walk(root_label, root_children))
 
 
-def model_to_summary(model: Model, show_position: bool = False) -> str:
+def model_to_summary(model: Modules, show_position: bool = False) -> str:
     """
     Concise, one-line-per-declaration summary of a model declaration.
 
@@ -74,7 +74,7 @@ def model_to_summary(model: Model, show_position: bool = False) -> str:
                     doc_preview = doc_preview[:27] + "..."
                 base += f"  // doc={doc_preview!r}"
             lines.append(base)
-    
+
     # for declaration in model.declarations:
     #     base = f"{declaration.__class__.__name__} {declaration.name!r}: {declaration.label!r}"
     #     extras: List[str] = []

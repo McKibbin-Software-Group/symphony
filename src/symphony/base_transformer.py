@@ -13,7 +13,6 @@ class BaseTransformer(Transformer):
 
     """
 
-
     def __init__(self, file_path: Path) -> None:
         """
         ### Overview
@@ -47,11 +46,11 @@ class BaseTransformer(Transformer):
         - `Path`: The path of the Symphony file.
         """
         return self._file_path
-        
+
     def parse_escaped_string(self, token: Token) -> str:
         """
         ### Overview
-        
+
         Convert an ESCAPED_STRING token into its Python string content.
 
         ### Arguments
