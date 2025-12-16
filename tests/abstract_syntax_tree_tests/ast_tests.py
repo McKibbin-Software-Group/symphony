@@ -21,12 +21,10 @@ def abstract_syntax_tree_summary(modules: Modules, show_position: bool = False) 
     lines: List[str] = []
     for module in modules.modules:
         for declaration in module.declarations:
-            base = f"{declaration.__class__.__name__} {declaration.name!r}: {declaration.label!r}"
+            label: str = f"{declaration.label.value}" if hasattr(declaration, "label") else ""
+            name: str = f"{declaration.name}" if hasattr(declaration, "name") else ""
+            base = f"{declaration.__class__.__name__} {name}: {label!r}"
             extras: List[str] = []
-            if isinstance(declaration, CategoryDeclaration):
-                extras.append(f"members={declaration.members}")
-            elif isinstance(declaration, DimensionDeclaration):
-                extras.append(f"members={declaration.members}")
             if show_position:
                 extras.append(
                     f"@{declaration.position.line}:{declaration.position.column}"

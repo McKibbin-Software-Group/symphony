@@ -327,6 +327,7 @@ AnyDeclaration = Union[
 
 @dataclass(frozen=True, slots=True)
 class Module(Node):
+    file_path: Path
     declarations: Tuple[AnyDeclaration, ...] = ()
 
 

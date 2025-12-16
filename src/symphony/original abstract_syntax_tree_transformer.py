@@ -19,10 +19,7 @@ from symphony import (
     symphony_position,
 )
 from symphony.abstract_syntax_tree import (
-    DeclarationType,
-    DimensionExpression,
-    DimensionListTerm,
-    DimensionReferenceTerm,
+    TypedList,
     DimensionDeclaration,
     Modules,
     AnyDeclaration,
@@ -57,85 +54,90 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
     # ---------- leaf grammar rules ----------
 
-    # ---------------------------------------------------------------------
-    # Terminal helpers
-    # ---------------------------------------------------------------------
-
-    def documentation(self, meta: Any, token: Token) -> StringWithPosition:
-        value: str = self.triple_string_value(token)
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=token)
-        return StringWithPosition(value=value, position=position)
-
-    def boolean(self, meta: Any, token: Token) -> bool:
-        text: str = str(token)
-        return text.lower() == "true"
-
-    def number(self, meta: Any, token: Token) -> float:
-        return float(str(token))
-
-
-
-    # def name_list(self, meta: Any, children: List[Token]) -> TypedList:
-    #     """
-    #     ### Overview
-
-    #     A tuple with "list" in the first position and the tuple of name tokens in the second position.
-
-    #     e.g.
-
-    #     ```python
-    #     ("list", [Token('NAME', 'red'), Token('NAME', 'green'), Token('NAME', 'blue')])
-    #     ```
-    #     """
-    #     return ("list", list(children))
-
-    # def member_list(self, meta: Any, children: List[Any]) -> TypedList:
-    #     """
-    #     ### Overview
-
-    #     Extract the list of member names from the member_list rule.
-
-    #     This does nothing because what we need is created by name_list already.
-
-    #     ### Returns
-
-    #     A tuple with "list" in the first position and the list of members in the second position.
-    #     """
-    #     for child in children:
-    #         if isinstance(child, tuple) and child[0] == "list":
-    #             return child
-            
-    #     position = symphony_position(file_path=self.file_path, token_or_meta=meta)
-    #     self.diagnostics.diagnostics.add(
-    #         Diagnostic(
-    #             code=errors.syntax_error,
-    #             severity=DiagnosticSeverity.error,
-    #             message=f"Failed to parse a list of members.",
-    #             primary_label=DiagnosticLabel(
-    #                 position=position,
-    #                 message="Symphony error occurred here.",
-    #                 is_primary=True,
-    #             ),
-    #             help_text="Check for errors near this location.",
-    #         )
-    #     )
-    #     return Discard
-
-    # ---------- rule handlers ----------
-
     def label(self, meta: Any, children: List[Token]) -> StringWithPosition:
-        token: Token = children[0]
-        value: str = self.parse_escaped_string(token)
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=token)
-        return StringWithPosition(value=value, position=position)
+        """
+        ### Overview
 
+        Label string handler.
+
+        ### Returns
+
+        A tuple of the label string and its source position.
+        """
+        assert len(children) == 1, f"Expected one label but found {len(children)}"
+        token = children[0]
+        return ast.literal_eval(token.value), symphony_position(self.file_path, meta)
+
+    def documentation(self, meta: Any, children: List[Token]) -> StringWithPosition:
+        """
+        ### Overview
+        Documentation Markdown handler.
+
+        ### Returns
+
+        A tuple of the documentation string and its source position.
+        """
+        assert len(children) == 1
+
+        # strip leading and trailing """ of TRIPLE_STRING
+        text: str = children[0].value[3:-3]
+
+        # Remove leading and trailing whitespace/newlines
+        text = text.strip()
+
+        return (text, symphony_position(self.file_path, meta))
+
+    def name_list(self, meta: Any, children: List[Token]) -> TypedList:
+        """
+        ### Overview
+
+        A tuple with "list" in the first position and the tuple of name tokens in the second position.
+
+        e.g.
+
+        ```python
+        ("list", [Token('NAME', 'red'), Token('NAME', 'green'), Token('NAME', 'blue')])
+        ```
+        """
+        return ("list", list(children))
+
+    def member_list(self, meta: Any, children: List[Any]) -> TypedList:
+        """
+        ### Overview
+
+        Extract the list of member names from the member_list rule.
+
+        This does nothing because what we need is created by name_list already.
+
+        ### Returns
+
+        A tuple with "list" in the first position and the list of members in the second position.
+        """
+        for child in children:
+            if isinstance(child, tuple) and child[0] == "list":
+                return child
+            
+        position = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        self.diagnostics.diagnostics.add(
+            Diagnostic(
+                code=errors.syntax_error,
+                severity=DiagnosticSeverity.error,
+                message=f"Failed to parse a list of members.",
+                primary_label=DiagnosticLabel(
+                    position=position,
+                    message="Symphony error occurred here.",
+                    is_primary=True,
+                ),
+                help_text="Check for errors near this location.",
+            )
+        )
+        return Discard
+    
     # ---------- dimension expression handlers ----------
 
-    def dimension_reference(self, meta: Any, children: List[Token]) -> DimensionReferenceTerm:
-        token: Token = children[0]
-        referenced_dimension: str = token.value
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
-        return DimensionReferenceTerm(position=position, referenced_dimension=referenced_dimension)
+    def dimension_reference(self, meta: Any, name_token: Token) -> DimensionReferenceTerm:
+        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        return DimensionReferenceTerm(position=position, referenced_dimension=str(name_token))
 
     def dimension_term(self, meta: Any, child: Any) -> Any:
         # The grammar typically routes either member_list or dimension_reference here.
@@ -192,16 +194,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         ), "Expected a label string"
         return label_with_position[0]
 
-
-    def include_declaration(self, meta: Any, children: List[Any]) -> MemberDeclaration:
-        """
-        ### Overview
-
-        Include declaration handler.
-        """
-        return Discard
-
-
     def member_declaration(self, meta: Any, children: List[Any]) -> MemberDeclaration:
         """
         ### Overview
@@ -212,17 +204,15 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             file_path=self.file_path, token_or_meta=meta
         )
         name: str = self.get_name(children[1])
-        label: StringWithPosition = children[2]
+        label: str = self.get_label(children[2])
         documentation, list_term = self._pick_doc_and_list(children[3:])
-    
+
         return MemberDeclaration(
             position=position,
-            declaration_type=DeclarationType.member,
             name=name,
             label=label,
             documentation=documentation,
         )
-
 
     def category_declaration(
         self, meta: Any, children: List[Any]
@@ -236,7 +226,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             file_path=self.file_path, token_or_meta=meta
         )
         name: str = self.get_name(children[1])
-        label: StringWithPosition = children[2]
+        label: str = children[2][0]
         documentation, list_term = self._pick_doc_and_list(children[3:])
 
         members: List[str] = []
@@ -266,10 +256,10 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         position: SourcePosition = symphony_position(
             file_path=self.file_path, token_or_meta=meta
         )
-        name: str = self.get_name(children[1])
-        label: StringWithPosition = children[2]
+        name: str = self.get_name(token=children[1])
+        label: str = self.get_label(label_with_position=children[2])
         dimension_expression = children[3]
-        documentation = children[4] if len(children) == 5 else None
+        documentation = documentation if len(children) == 4 else None
         return DimensionDeclaration(
             position=position,
             name=name,
@@ -285,15 +275,12 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
         """
-        return Module(
-            position=SourcePosition(file_path=self.file_path, line=1, column=1),
-            declarations=children,
-        )
+        return Module(declarations=children)
 
     @staticmethod
     def _pick_doc_and_list(
         extra_items: List[Any],
-    ) -> Tuple[Optional[StringWithPosition], Optional[Any]]:
+    ) -> Tuple[Optional[StringWithPosition], Optional[TypedList]]:
         """
         ### Overview
 
@@ -310,7 +297,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         """
 
         documentation: Optional[StringWithPosition] = None
-        list_term: Optional[Any] = None
+        list_term: Optional[TypedList] = None
 
         for item in extra_items:
             if not isinstance(item, tuple):

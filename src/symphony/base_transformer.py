@@ -56,6 +56,7 @@ class BaseTransformer(Transformer):
         """
         return self._file_path
 
+    @property
     def diagnostics(self) -> DiagnosticBag:
         """
         ### Overview
@@ -80,3 +81,19 @@ class BaseTransformer(Transformer):
 
         """
         return ast.literal_eval(token.value)
+
+    def triple_string_value(self, token: Token) -> str:
+        """
+        Convert a TRIPLE_STRING token into its text content.
+
+        The grammar uses a regex token like /\"\"\"(.|\n|\r)*?\"\"\"/.
+        """
+        
+        raw: str = token.value
+        if raw.startswith('"""') and raw.endswith('"""') and len(raw) >= 6:
+            text: str = raw[3:-3]
+        
+        # Remove leading and trailing whitespace/newlines
+        result: str = text.strip()
+
+        return result
