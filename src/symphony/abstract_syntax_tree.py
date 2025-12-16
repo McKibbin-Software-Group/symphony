@@ -73,7 +73,7 @@ class MemberDeclaration(NamedDeclaration):
 @dataclass(frozen=True, slots=True)
 class CategoryDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.category
-    members: Tuple[str, ...] = ()
+    members: NameList = ()
 
 
 # =============================================================================
@@ -91,8 +91,18 @@ class DimensionListTerm(DimensionTerm):
 
 
 @dataclass(frozen=True, slots=True)
-class DimensionReferenceTerm(DimensionTerm):
+class DimensionReference(DimensionTerm):
     referenced_dimension: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class UnitReference(Node):
+    referenced_unit: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class DeviationUnitReference(Node): 
+    referenced_deviation_unit: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,7 +112,7 @@ class DimensionExpression(Node):
 
 
 @dataclass(frozen=True, slots=True)
-class DomainList(Node):
+class NameList(Node):
     """
     A list that appears inside a domain expression term.
 
@@ -114,7 +124,7 @@ class DomainList(Node):
     symbol tables. We record the list and whether it came from name_list or
     member_list.
     """
-    kind: str  # "names" | "members"
+    kind: str  # "dimensions" | "members" | "domains"
     items: Tuple[str, ...] = ()
 
 
@@ -130,7 +140,7 @@ class TupleCondition(Node):
 
 @dataclass(frozen=True, slots=True)
 class DomainTerm(Node):
-    domain_list: DomainList
+    domain_list: NameList
     tuple_conditions: Tuple[TupleCondition, ...] = ()
 
 

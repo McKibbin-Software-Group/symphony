@@ -74,21 +74,21 @@ equation_declaration:   EQUATION ":" label domain_expression? equation_expressio
 
 label: ESCAPED_STRING
 
-?documentation: TRIPLE_STRING
+documentation: TRIPLE_STRING
 
 name_list: NAME ("," NAME)*
 
 member_list: "[" name_list "]"
 
-unit: UNIT EQUALS unit_reference 
+unit: UNIT "=" unit_reference 
 
-deviation_unit: DEVIATION_UNIT EQUALS unit_reference
+deviation_unit: DEVIATION_UNIT "=" unit_reference
 
 unit_reference: NAME
 
-logged: LOGGED EQUALS boolean
+logged: LOGGED "=" boolean
 
-intertemporal: INTERTEMPORAL EQUALS boolean
+intertemporal: INTERTEMPORAL "=" boolean
 
 set_operator: PLUS | MINUS
 

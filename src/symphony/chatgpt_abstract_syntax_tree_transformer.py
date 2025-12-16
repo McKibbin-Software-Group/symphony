@@ -28,10 +28,10 @@ from symphony.abstract_syntax_tree import (
     DimensionDeclaration,
     DimensionExpression,
     DimensionListTerm,
-    DimensionReferenceTerm,
+    DimensionReference,
     DomainDeclaration,
     DomainExpression,
-    DomainList,
+    NameList,
     DomainTerm,
     EquationDeclaration,
     EquationExpression,
@@ -135,9 +135,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     # Dimension expressions
     # ---------------------------------------------------------------------
 
-    def dimension_reference(self, meta: Any, name_token: Token) -> DimensionReferenceTerm:
+    def dimension_reference(self, meta: Any, name_token: Token) -> DimensionReference:
         position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
-        return DimensionReferenceTerm(position=position, referenced_dimension=str(name_token))
+        return DimensionReference(position=position, referenced_dimension=str(name_token))
 
     def dimension_term(self, meta: Any, child: Any) -> Any:
         # The grammar typically routes either member_list or dimension_reference here.
@@ -169,13 +169,13 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     # Domain expressions
     # ---------------------------------------------------------------------
 
-    def domain_list(self, meta: Any, child: Any) -> DomainList:
+    def domain_list(self, meta: Any, child: Any) -> NameList:
         position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
         if isinstance(child, tuple):
             # Heuristic: name_list returns tuple[str,...]; member_list also returns tuple[str,...].
             # We cannot distinguish reliably here; later passes can resolve using symbol tables.
-            return DomainList(position=position, kind="names", items=tuple(str(x) for x in child))
-        if isinstance(child, DomainList):
+            return NameList(position=position, kind="names", items=tuple(str(x) for x in child))
+        if isinstance(child, NameList):
             return child
         raise TypeError(f"Unexpected domain_list child type: {type(child)}")
 
@@ -192,7 +192,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         conditions: List[TupleCondition] = [c for c in children if isinstance(c, TupleCondition)]
         return tuple(conditions)
 
-    def domain_term(self, meta: Any, domain_list: DomainList, tuple_conditions: Optional[Tuple[TupleCondition, ...]] = None) -> DomainTerm:
+    def domain_term(self, meta: Any, domain_list: NameList, tuple_conditions: Optional[Tuple[TupleCondition, ...]] = None) -> DomainTerm:
         position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
         return DomainTerm(position=position, domain_list=domain_list, tuple_conditions=tuple_conditions or ())
 
@@ -409,7 +409,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             dimension_term: Any = items[i]
             tuple_position: Any = items[i + 2]
             dimension_name: str
-            if isinstance(dimension_term, DimensionReferenceTerm):
+            if isinstance(dimension_term, DimensionReference):
                 dimension_name = dimension_term.referenced_dimension
             elif isinstance(dimension_term, Token):
                 dimension_name = str(dimension_term)
@@ -505,11 +505,11 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=function_name_token)
         return FunctionCall(position=position, function_name=str(function_name_token), argument=argument)
 
-    def summation(self, meta: Any, _sum: Any, _lparen: Any, dimension: DimensionReferenceTerm, _bar: Any, body: Any, _rparen: Any) -> Summation:
+    def summation(self, meta: Any, _sum: Any, _lparen: Any, dimension: DimensionReference, _bar: Any, body: Any, _rparen: Any) -> Summation:
         position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
         return Summation(position=position, dimension_name=dimension.referenced_dimension, body=body)
 
-    def product(self, meta: Any, _prod: Any, _lparen: Any, dimension: DimensionReferenceTerm, _bar: Any, body: Any, _rparen: Any) -> Product:
+    def product(self, meta: Any, _prod: Any, _lparen: Any, dimension: DimensionReference, _bar: Any, body: Any, _rparen: Any) -> Product:
         position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
         return Product(position=position, dimension_name=dimension.referenced_dimension, body=body)
 

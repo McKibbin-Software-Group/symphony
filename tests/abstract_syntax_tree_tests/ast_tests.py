@@ -32,7 +32,7 @@ def abstract_syntax_tree_summary(modules: Modules, show_position: bool = False) 
             if extras:
                 base += "  (" + ", ".join(extras) + ")"
             if declaration.documentation:
-                doc_preview = declaration.documentation[0]
+                doc_preview: str = declaration.documentation.value
                 if len(doc_preview) > 30:
                     doc_preview = doc_preview[:27] + "..."
                 base += f"  // doc={doc_preview!r}"
