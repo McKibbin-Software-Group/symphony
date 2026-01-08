@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from symphony import SourcePosition
 
@@ -12,11 +12,13 @@ from symphony import SourcePosition
 # Base node types
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class Node:
     """
     Base type for all abstract syntax tree nodes.
     """
+
     position: SourcePosition
 
 
@@ -26,9 +28,16 @@ class StringWithPosition:
     position: SourcePosition
 
 
+@dataclass(frozen=True, slots=True)
+class DocumentationWithPosition:
+    value: str
+    position: SourcePosition
+
+
 # =============================================================================
 # Declarations
 # =============================================================================
+
 
 class DeclarationType(str, Enum):
     include = "include"
@@ -62,7 +71,7 @@ class NamedDeclaration(Declaration):
             position=SourcePosition(file_path=Path("<unknown>"), line=1, column=1),
         )
     )
-    documentation: Optional[StringWithPosition] = None
+    documentation: Optional[DocumentationWithPosition] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +89,7 @@ class CategoryDeclaration(NamedDeclaration):
 # Dimension and domain expressions (raw, pass 1)
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class DimensionTerm(Node):
     pass
@@ -92,17 +102,17 @@ class DimensionListTerm(DimensionTerm):
 
 @dataclass(frozen=True, slots=True)
 class DimensionReference(DimensionTerm):
-    referenced_dimension: str = ""
+    dimension: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class UnitReference(Node):
-    referenced_unit: str = ""
+    unit: str = ""
 
 
 @dataclass(frozen=True, slots=True)
-class DeviationUnitReference(Node): 
-    referenced_deviation_unit: str = ""
+class DeviationUnitReference(Node):
+    deviation_unit: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +134,7 @@ class NameList(Node):
     symbol tables. We record the list and whether it came from name_list or
     member_list.
     """
+
     kind: str  # "dimensions" | "members" | "domains"
     items: Tuple[str, ...] = ()
 
@@ -133,9 +144,20 @@ class TupleCondition(Node):
     """
     A condition over tuple positions, e.g. 1 = 2 or 1 != 2.
     """
+
     left_position: int
     operator: str
     right_position: int
+
+
+@dataclass(frozen=True, slots=True)
+class TuplePosition(Node):
+    """
+    A dimension reference and a position within a domain tuple.
+    """
+
+    dimension_reference: DimensionReference
+    tuple_position: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +190,7 @@ class DomainDeclaration(NamedDeclaration):
 # Units
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class UnitDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.unit
@@ -176,6 +199,7 @@ class UnitDeclaration(NamedDeclaration):
 # =============================================================================
 # Parameters and variables
 # =============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class UnitSpecification(Node):
@@ -208,6 +232,7 @@ class VariableDeclaration(NamedDeclaration):
 # Equation expression nodes
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class VariableReference(Node):
     name: str
@@ -220,12 +245,13 @@ class VariableReference(Node):
 class LhsVariableReference(Node):
     name: str
     domain_expression: Optional[DomainExpression] = None
+    lead: bool = False
+    expectation: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class Expression(Node):
-    pass
-
+    pass    
 
 @dataclass(frozen=True, slots=True)
 class NumberLiteral(Expression):
@@ -262,13 +288,13 @@ class BinaryOperation(Expression):
 
 @dataclass(frozen=True, slots=True)
 class Summation(Expression):
-    dimension_name: str
+    dimension_name: StringWithPosition
     body: Expression
 
 
 @dataclass(frozen=True, slots=True)
 class Product(Expression):
-    dimension_name: str
+    dimension_name: StringWithPosition
     body: Expression
 
 
@@ -300,8 +326,8 @@ class LhsLead(LhsWrapped):
 
 @dataclass(frozen=True, slots=True)
 class EquationExpression(Node):
-    lhs: LhsWrapped
-    rhs: Expression
+    lhs: LhsVariableReference
+    rhs: List[Any]
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,7 +341,7 @@ class EquationDeclaration(Declaration):
     )
     domain_expression: Optional[DomainExpression] = None
     equation_expression: Optional[EquationExpression] = None
-    documentation: Optional[StringWithPosition] = None
+    documentation: Optional[DocumentationWithPosition] = None
 
 
 AnyDeclaration = Union[
@@ -335,6 +361,7 @@ AnyDeclaration = Union[
 # Module containers
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class Module(Node):
     declarations: Tuple[AnyDeclaration, ...] = ()
@@ -346,12 +373,17 @@ class Modules:
 
     @property
     def declarations(self) -> Tuple[AnyDeclaration, ...]:
-        return tuple(declaration for module in self.modules for declaration in module.declarations)
+        return tuple(
+            declaration
+            for module in self.modules
+            for declaration in module.declarations
+        )
 
 
 # =============================================================================
 # Convenience helpers for later passes (do not mutate frozen nodes)
 # =============================================================================
+
 
 def with_resolved_dimension_members(
     declaration: DimensionDeclaration,
@@ -364,4 +396,6 @@ def with_resolved_domain_tuples(
     declaration: DomainDeclaration,
     resolved_tuples: Sequence[Sequence[str]],
 ) -> DomainDeclaration:
-    return replace(declaration, resolved_tuples=tuple(tuple(items) for items in resolved_tuples))
+    return replace(
+        declaration, resolved_tuples=tuple(tuple(items) for items in resolved_tuples)
+    )

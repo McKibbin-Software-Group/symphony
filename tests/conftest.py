@@ -116,10 +116,9 @@ def symphony_files(root_file_path: Path) -> LoaderResult:
     """
     Load all discoverable Symphony files starting from the given root file path.
     """
-    result: LoaderResult = Loader().load_symphony_files(
-        root_file_path=root_file_path
-    )
+    result: LoaderResult = Loader().load_symphony_files(root_file_path=root_file_path)
     return result
+
 
 @pytest.fixture
 def categories_symphony_files_loader_result(categories_file: Path) -> LoaderResult:
@@ -131,6 +130,7 @@ def categories_with_syntax_errors_symphony_files_loader_result(
     categories_with_syntax_errors_file: Path,
 ) -> SymphonyFiles:
     return symphony_files(categories_with_syntax_errors_file)
+
 
 @pytest.fixture
 def dimensions_symphony_files_loader_result(dimensions_file: Path) -> LoaderResult:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import is_dataclass, fields
+import logging
 from typing import Any, List, Tuple
 from enum import Enum
 from symphony.abstract_syntax_tree import (
@@ -45,6 +46,7 @@ def model_to_summary(model: Modules, show_position: bool = False) -> str:
 
     A multi-line string summarizing each declaration.
     """
+    logging.debug(model.categories)
     lines: List[str] = []
     for category in model.categories.values():
         base = f"Category {category.name!r}: {category.label!r}"
@@ -74,6 +76,38 @@ def model_to_summary(model: Modules, show_position: bool = False) -> str:
                     doc_preview = doc_preview[:27] + "..."
                 base += f"  // doc={doc_preview!r}"
             lines.append(base)
+
+    for dimension in model.dimensions:
+        base = f"Dimension {dimension.name!r}: {dimension.label!r}"
+        extras: List[str] = []
+        if show_position:
+            extras.append(f"@{dimension.position.line}:{dimension.position.column}")
+        if extras:
+            base += "  (" + ", ".join(extras) + ")"
+        if dimension.documentation:
+            doc_preview = dimension.documentation[0]
+            if len(doc_preview) > 30:
+                doc_preview = doc_preview[:27] + "..."
+            base += f"  // doc={doc_preview!r}"
+        lines.append(base)
+
+        for member_name in dimension.members:
+            member = model.members[member_name]
+            base = f"\tMember {member.name!r}: {member.label!r}"
+            extras: List[str] = []
+            if show_position:
+                extras.append(f"@{member.position.line}:{member.position.column}")
+            if extras:
+                base += "  (" + ", ".join(extras) + ")"
+            if member.documentation:
+                doc_preview = member.documentation[0]
+                if len(doc_preview) > 30:
+                    doc_preview = doc_preview[:27] + "..."
+                base += f"  // doc={doc_preview!r}"
+            lines.append(base)
+
+    for equation_declaration in model.equations:
+        pass
 
     # for declaration in model.declarations:
     #     base = f"{declaration.__class__.__name__} {declaration.name!r}: {declaration.label!r}"

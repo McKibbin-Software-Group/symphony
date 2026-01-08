@@ -89,12 +89,16 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
     def label(self, meta: Any, token: Token) -> StringWithPosition:
         value: str = self.parse_escaped_string(token)
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=token
+        )
         return StringWithPosition(value=value, position=position)
 
     def documentation(self, meta: Any, token: Token) -> StringWithPosition:
         value: str = _triple_string_value(token)
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=token
+        )
         return StringWithPosition(value=value, position=position)
 
     def boolean(self, meta: Any, token: Token) -> bool:
@@ -136,18 +140,26 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     # ---------------------------------------------------------------------
 
     def dimension_reference(self, meta: Any, name_token: Token) -> DimensionReference:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
-        return DimensionReference(position=position, referenced_dimension=str(name_token))
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
+        return DimensionReference(position=position, dimension=str(name_token))
 
     def dimension_term(self, meta: Any, child: Any) -> Any:
         # The grammar typically routes either member_list or dimension_reference here.
         return child
 
-    def dimension_expression(self, meta: Any, first_term: Any, *rest: Any) -> DimensionExpression:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def dimension_expression(
+        self, meta: Any, first_term: Any, *rest: Any
+    ) -> DimensionExpression:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         first: Any = first_term
         if isinstance(first_term, tuple):
-            first = DimensionListTerm(position=position, members=tuple(str(x) for x in first_term))
+            first = DimensionListTerm(
+                position=position, members=tuple(str(x) for x in first_term)
+            )
         rest_pairs: List[Tuple[str, Any]] = []
         # rest arrives as (op, term, op, term, ...)
         i: int = 0
@@ -158,29 +170,41 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             operator: str = str(operator_token)
             term_node: Any
             if isinstance(term_value, tuple):
-                term_node = DimensionListTerm(position=position, members=tuple(str(x) for x in term_value))
+                term_node = DimensionListTerm(
+                    position=position, members=tuple(str(x) for x in term_value)
+                )
             else:
                 term_node = term_value
             rest_pairs.append((operator, term_node))
             i += 2
-        return DimensionExpression(position=position, first=first, rest=tuple(rest_pairs))
+        return DimensionExpression(
+            position=position, first=first, rest=tuple(rest_pairs)
+        )
 
     # ---------------------------------------------------------------------
     # Domain expressions
     # ---------------------------------------------------------------------
 
     def domain_list(self, meta: Any, child: Any) -> NameList:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         if isinstance(child, tuple):
             # Heuristic: name_list returns tuple[str,...]; member_list also returns tuple[str,...].
             # We cannot distinguish reliably here; later passes can resolve using symbol tables.
-            return NameList(position=position, kind="names", items=tuple(str(x) for x in child))
+            return NameList(
+                position=position, kind="names", items=tuple(str(x) for x in child)
+            )
         if isinstance(child, NameList):
             return child
         raise TypeError(f"Unexpected domain_list child type: {type(child)}")
 
-    def tuple_condition(self, meta: Any, left: Token, operator_token: Token, right: Token) -> TupleCondition:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def tuple_condition(
+        self, meta: Any, left: Token, operator_token: Token, right: Token
+    ) -> TupleCondition:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return TupleCondition(
             position=position,
             left_position=int(str(left)),
@@ -189,15 +213,32 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         )
 
     def tuple_conditions(self, meta: Any, *children: Any) -> Tuple[TupleCondition, ...]:
-        conditions: List[TupleCondition] = [c for c in children if isinstance(c, TupleCondition)]
+        conditions: List[TupleCondition] = [
+            c for c in children if isinstance(c, TupleCondition)
+        ]
         return tuple(conditions)
 
-    def domain_term(self, meta: Any, domain_list: NameList, tuple_conditions: Optional[Tuple[TupleCondition, ...]] = None) -> DomainTerm:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
-        return DomainTerm(position=position, domain_list=domain_list, tuple_conditions=tuple_conditions or ())
+    def domain_term(
+        self,
+        meta: Any,
+        domain_list: NameList,
+        tuple_conditions: Optional[Tuple[TupleCondition, ...]] = None,
+    ) -> DomainTerm:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
+        return DomainTerm(
+            position=position,
+            domain_list=domain_list,
+            tuple_conditions=tuple_conditions or (),
+        )
 
-    def domain_expression(self, meta: Any, first_term: DomainTerm, *rest: Any) -> DomainExpression:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def domain_expression(
+        self, meta: Any, first_term: DomainTerm, *rest: Any
+    ) -> DomainExpression:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         rest_pairs: List[Tuple[str, DomainTerm]] = []
         rest_items: Tuple[Any, ...] = tuple(rest)
         i: int = 0
@@ -206,7 +247,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             term: DomainTerm = rest_items[i + 1]
             rest_pairs.append((operator, term))
             i += 2
-        return DomainExpression(position=position, first=first_term, rest=tuple(rest_pairs))
+        return DomainExpression(
+            position=position, first=first_term, rest=tuple(rest_pairs)
+        )
 
     # ---------------------------------------------------------------------
     # Declarations
@@ -214,11 +257,27 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
     def include_declaration(self, meta: Any, path_token: Token) -> IncludeDeclaration:
         included_path: str = self.parse_escaped_string(path_token)
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
-        return IncludeDeclaration(position=position, declaration_type=DeclarationType.include, included_path=included_path)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
+        return IncludeDeclaration(
+            position=position,
+            declaration_type=DeclarationType.include,
+            included_path=included_path,
+        )
 
-    def member_declaration(self, meta: Any, _member_kw: Any, name_token: Token, _colon: Any, label: StringWithPosition, documentation: Optional[StringWithPosition] = None) -> MemberDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+    def member_declaration(
+        self,
+        meta: Any,
+        _member_kw: Any,
+        name_token: Token,
+        _colon: Any,
+        label: StringWithPosition,
+        documentation: Optional[StringWithPosition] = None,
+    ) -> MemberDeclaration:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return MemberDeclaration(
             position=position,
             declaration_type=DeclarationType.member,
@@ -237,7 +296,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         members: Tuple[str, ...],
         documentation: Optional[StringWithPosition] = None,
     ) -> CategoryDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return CategoryDeclaration(
             position=position,
             declaration_type=DeclarationType.category,
@@ -257,7 +318,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         expression: Optional[DimensionExpression] = None,
         documentation: Optional[StringWithPosition] = None,
     ) -> DimensionDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return DimensionDeclaration(
             position=position,
             declaration_type=DeclarationType.dimension,
@@ -277,7 +340,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         expression: Optional[DomainExpression] = None,
         documentation: Optional[StringWithPosition] = None,
     ) -> DomainDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return DomainDeclaration(
             position=position,
             declaration_type=DeclarationType.domain,
@@ -296,7 +361,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         label: StringWithPosition,
         documentation: Optional[StringWithPosition] = None,
     ) -> UnitDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return UnitDeclaration(
             position=position,
             declaration_type=DeclarationType.unit,
@@ -305,13 +372,23 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             documentation=documentation,
         )
 
-    def unit(self, meta: Any, _kw: Any, _equals: Any, name_token: Token) -> UnitSpecification:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+    def unit(
+        self, meta: Any, _kw: Any, _equals: Any, name_token: Token
+    ) -> UnitSpecification:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return UnitSpecification(position=position, unit_name=str(name_token))
 
-    def deviation_unit(self, meta: Any, _kw: Any, _equals: Any, name_token: Token) -> DeviationUnitSpecification:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
-        return DeviationUnitSpecification(position=position, deviation_unit_name=str(name_token))
+    def deviation_unit(
+        self, meta: Any, _kw: Any, _equals: Any, name_token: Token
+    ) -> DeviationUnitSpecification:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
+        return DeviationUnitSpecification(
+            position=position, deviation_unit_name=str(name_token)
+        )
 
     def logged(self, meta: Any, _kw: Any, _equals: Any, value: bool) -> bool:
         return bool(value)
@@ -330,7 +407,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         unit: Optional[UnitSpecification] = None,
         documentation: Optional[StringWithPosition] = None,
     ) -> ParameterDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return ParameterDeclaration(
             position=position,
             declaration_type=DeclarationType.parameter,
@@ -355,7 +434,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         intertemporal: Optional[bool] = None,
         documentation: Optional[StringWithPosition] = None,
     ) -> VariableDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         return VariableDeclaration(
             position=position,
             declaration_type=DeclarationType.variable,
@@ -379,7 +460,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         equation_expression: EquationExpression,
         documentation: Optional[StringWithPosition] = None,
     ) -> EquationDeclaration:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return EquationDeclaration(
             position=position,
             declaration_type=DeclarationType.equation,
@@ -393,14 +476,27 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     # Variable references (lhs / rhs)
     # ---------------------------------------------------------------------
 
-    def lhs_variable_reference(self, meta: Any, name_token: Token, domain_expression: Optional[DomainExpression] = None) -> LhsVariableReference:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
-        return LhsVariableReference(position=position, name=str(name_token), domain_expression=domain_expression)
+    def lhs_variable_reference(
+        self,
+        meta: Any,
+        name_token: Token,
+        domain_expression: Optional[DomainExpression] = None,
+    ) -> LhsVariableReference:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
+        return LhsVariableReference(
+            position=position, name=str(name_token), domain_expression=domain_expression
+        )
 
-    def rhs_domain_restriction(self, meta: Any, _dom: Any, _equals: Any, domain_expression: DomainExpression) -> Tuple[str, DomainExpression]:
+    def rhs_domain_restriction(
+        self, meta: Any, _dom: Any, _equals: Any, domain_expression: DomainExpression
+    ) -> Tuple[str, DomainExpression]:
         return ("dom", domain_expression)
 
-    def tuple_position_list(self, meta: Any, *children: Any) -> Tuple[Tuple[str, int], ...]:
+    def tuple_position_list(
+        self, meta: Any, *children: Any
+    ) -> Tuple[Tuple[str, int], ...]:
         # pattern: dimension_reference ":" TUPLE_POSITION ("," dimension_reference ":" TUPLE_POSITION)*
         result: List[Tuple[str, int]] = []
         items: List[Any] = list(children)
@@ -410,7 +506,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             tuple_position: Any = items[i + 2]
             dimension_name: str
             if isinstance(dimension_term, DimensionReference):
-                dimension_name = dimension_term.referenced_dimension
+                dimension_name = dimension_term.dimension
             elif isinstance(dimension_term, Token):
                 dimension_name = str(dimension_term)
             else:
@@ -419,25 +515,45 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             i += 3
         return tuple(result)
 
-    def rhs_dimension_matches(self, meta: Any, _dim: Any, _equals: Any, positions: Tuple[Tuple[str, int], ...]) -> Tuple[str, Tuple[Tuple[str, int], ...]]:
+    def rhs_dimension_matches(
+        self, meta: Any, _dim: Any, _equals: Any, positions: Tuple[Tuple[str, int], ...]
+    ) -> Tuple[str, Tuple[Tuple[str, int], ...]]:
         return ("dim", positions)
 
-    def rhs_aggregation_matches(self, meta: Any, _agg: Any, _equals: Any, positions: Tuple[Tuple[str, int], ...]) -> Tuple[str, Tuple[Tuple[str, int], ...]]:
+    def rhs_aggregation_matches(
+        self, meta: Any, _agg: Any, _equals: Any, positions: Tuple[Tuple[str, int], ...]
+    ) -> Tuple[str, Tuple[Tuple[str, int], ...]]:
         return ("agg", positions)
 
-    def rhs_variable_reference(self, meta: Any, name_token: Token, conditionals: Optional[Sequence[Any]] = None) -> VariableReference:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
+    def rhs_variable_reference(
+        self, meta: Any, name_token: Token, conditionals: Optional[Sequence[Any]] = None
+    ) -> VariableReference:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
         domain_expression: Optional[DomainExpression] = None
         dimension_matches: Optional[Tuple[Tuple[str, int], ...]] = None
         aggregation_matches: Optional[Tuple[Tuple[str, int], ...]] = None
 
         if conditionals:
             for conditional in conditionals:
-                if isinstance(conditional, tuple) and conditional and conditional[0] == "dom":
+                if (
+                    isinstance(conditional, tuple)
+                    and conditional
+                    and conditional[0] == "dom"
+                ):
                     domain_expression = conditional[1]
-                if isinstance(conditional, tuple) and conditional and conditional[0] == "dim":
+                if (
+                    isinstance(conditional, tuple)
+                    and conditional
+                    and conditional[0] == "dim"
+                ):
                     dimension_matches = tuple(conditional[1])
-                if isinstance(conditional, tuple) and conditional and conditional[0] == "agg":
+                if (
+                    isinstance(conditional, tuple)
+                    and conditional
+                    and conditional[0] == "agg"
+                ):
                     aggregation_matches = tuple(conditional[1])
 
         return VariableReference(
@@ -455,39 +571,64 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     def lhs_wrapped_variable(self, meta: Any, child: Any) -> Any:
         return child
 
-    def lhs_expectation(self, meta: Any, _e: Any, _lparen: Any, inner: Any, _rparen: Any) -> LhsExpectation:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def lhs_expectation(
+        self, meta: Any, _e: Any, _lparen: Any, inner: Any, _rparen: Any
+    ) -> LhsExpectation:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return LhsExpectation(position=position, inner=inner)
 
-    def lhs_lead(self, meta: Any, _lead: Any, _lparen: Any, inner: Any, _comma_or_rparen: Any = None, lead_amount: Optional[Token] = None, _rparen: Any = None) -> LhsLead:
+    def lhs_lead(
+        self,
+        meta: Any,
+        _lead: Any,
+        _lparen: Any,
+        inner: Any,
+        _comma_or_rparen: Any = None,
+        lead_amount: Optional[Token] = None,
+        _rparen: Any = None,
+    ) -> LhsLead:
         """
         The grammar variants seen during development differ slightly. This method is tolerant:
           - lead(lhs_wrapped_variable, INT)
           - lead(lhs_wrapped_variable)
         """
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         amount: int = 1
         if lead_amount is not None and isinstance(lead_amount, Token):
             amount = int(str(lead_amount))
         return LhsLead(position=position, inner=inner, lead_amount=amount)
 
-    def lhs_wrapped_variable_reference(self, meta: Any, reference: LhsVariableReference) -> LhsWrappedVariable:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def lhs_wrapped_variable_reference(
+        self, meta: Any, reference: LhsVariableReference
+    ) -> LhsWrappedVariable:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return LhsWrappedVariable(position=position, reference=reference)
 
     # ---------------------------------------------------------------------
     # Equation root
     # ---------------------------------------------------------------------
 
-    def equality_expression(self, meta: Any, lhs: Any, _equals: Any, rhs: Any) -> EquationExpression:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def equality_expression(
+        self, meta: Any, lhs: Any, _equals: Any, rhs: Any
+    ) -> EquationExpression:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         if isinstance(lhs, LhsVariableReference):
             lhs_wrapped: Any = LhsWrappedVariable(position=lhs.position, reference=lhs)
         else:
             lhs_wrapped = lhs
         return EquationExpression(position=position, lhs=lhs_wrapped, rhs=rhs)
 
-    def equation_expression(self, meta: Any, child: EquationExpression) -> EquationExpression:
+    def equation_expression(
+        self, meta: Any, child: EquationExpression
+    ) -> EquationExpression:
         return child
 
     # ---------------------------------------------------------------------
@@ -497,38 +638,92 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     def atom(self, meta: Any, child: Any) -> Any:
         return child
 
-    def rhs_expectation(self, meta: Any, _e: Any, _lparen: Any, variable: VariableReference, _rparen: Any) -> Expectation:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def rhs_expectation(
+        self,
+        meta: Any,
+        _e: Any,
+        _lparen: Any,
+        variable: VariableReference,
+        _rparen: Any,
+    ) -> Expectation:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return Expectation(position=position, reference=variable)
 
-    def function(self, meta: Any, function_name_token: Token, _lparen: Any, argument: Any, _rparen: Any) -> FunctionCall:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=function_name_token)
-        return FunctionCall(position=position, function_name=str(function_name_token), argument=argument)
+    def function(
+        self,
+        meta: Any,
+        function_name_token: Token,
+        _lparen: Any,
+        argument: Any,
+        _rparen: Any,
+    ) -> FunctionCall:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=function_name_token
+        )
+        return FunctionCall(
+            position=position, function_name=str(function_name_token), argument=argument
+        )
 
-    def summation(self, meta: Any, _sum: Any, _lparen: Any, dimension: DimensionReference, _bar: Any, body: Any, _rparen: Any) -> Summation:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
-        return Summation(position=position, dimension_name=dimension.referenced_dimension, body=body)
+    def summation(
+        self,
+        meta: Any,
+        _sum: Any,
+        _lparen: Any,
+        dimension: DimensionReference,
+        _bar: Any,
+        body: Any,
+        _rparen: Any,
+    ) -> Summation:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
+        return Summation(
+            position=position, dimension_name=dimension.dimension, body=body
+        )
 
-    def product(self, meta: Any, _prod: Any, _lparen: Any, dimension: DimensionReference, _bar: Any, body: Any, _rparen: Any) -> Product:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
-        return Product(position=position, dimension_name=dimension.referenced_dimension, body=body)
+    def product(
+        self,
+        meta: Any,
+        _prod: Any,
+        _lparen: Any,
+        dimension: DimensionReference,
+        _bar: Any,
+        body: Any,
+        _rparen: Any,
+    ) -> Product:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
+        return Product(position=position, dimension_name=dimension.dimension, body=body)
 
     def number_literal(self, meta: Any, value: float) -> NumberLiteral:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return NumberLiteral(position=position, value=value)
 
     def boolean_literal(self, meta: Any, value: bool) -> BooleanLiteral:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         return BooleanLiteral(position=position, value=value)
 
-    def rhs_variable_atom(self, meta: Any, reference: VariableReference) -> VariableExpression:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=reference.position)
+    def rhs_variable_atom(
+        self, meta: Any, reference: VariableReference
+    ) -> VariableExpression:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=reference.position
+        )
         return VariableExpression(position=position, reference=reference)
 
     def unary_expression(self, meta: Any, *children: Any) -> Any:
         # unary_expression: MINUS unary_expression | atom  (typical)
         if len(children) == 2 and str(children[0]) == "-":
-            position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+            position: SourcePosition = symphony_position(
+                file_path=self.file_path, token_or_meta=meta
+            )
             return UnaryMinus(position=position, operand=children[1])
         if len(children) == 1:
             return children[0]
@@ -544,7 +739,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         # If POWER operator exists, fold as right-associative; otherwise passthrough.
         if not rest:
             return child
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         # right associative: a ^ b ^ c = a ^ (b ^ c)
         rest_items: List[Any] = [child] + list(rest)
         # expecting pattern: base, op, exponent, op, exponent...
@@ -555,21 +752,32 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         while i + 1 < len(rest_items):
             operator_next: str = str(rest_items[i])
             exponent_next: Any = rest_items[i + 1]
-            right = BinaryOperation(position=position, operator=operator_next, left=right, right=exponent_next)
+            right = BinaryOperation(
+                position=position,
+                operator=operator_next,
+                left=right,
+                right=exponent_next,
+            )
             i += 2
-        return BinaryOperation(position=position, operator=operator, left=child, right=right)
+        return BinaryOperation(
+            position=position, operator=operator, left=child, right=right
+        )
 
     def _fold_left(self, meta: Any, first: Any, rest: Sequence[Any]) -> Any:
         if not rest:
             return first
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         items: Tuple[Any, ...] = tuple(rest)
         expression: Any = first
         i: int = 0
         while i + 1 < len(items):
             operator: str = str(items[i])
             right: Any = items[i + 1]
-            expression = BinaryOperation(position=position, operator=operator, left=expression, right=right)
+            expression = BinaryOperation(
+                position=position, operator=operator, left=expression, right=right
+            )
             i += 2
         return expression
 
@@ -610,7 +818,11 @@ def parse_module(file_path: Path, text: str) -> Tuple[Optional[Module], Diagnost
                 severity=DiagnosticSeverity.error,
                 message=f"Failed to parse Symphony file: {err}",
                 primary_label=DiagnosticLabel(
-                    position=SourcePosition(file_path=file_path, line=getattr(err, "line", 1), column=getattr(err, "column", 1)),
+                    position=SourcePosition(
+                        file_path=file_path,
+                        line=getattr(err, "line", 1),
+                        column=getattr(err, "column", 1),
+                    ),
                     message="Parse error occurred here.",
                     is_primary=True,
                 ),
@@ -630,7 +842,9 @@ def build_modules(symphony_files: SymphonyFiles) -> Tuple[Modules, DiagnosticBag
     modules: List[Module] = []
 
     for symphony_file in symphony_files.files:
-        module, module_diagnostics = parse_module(symphony_file.file_path, symphony_file.text)
+        module, module_diagnostics = parse_module(
+            symphony_file.file_path, symphony_file.text
+        )
         diagnostics.extend(module_diagnostics)
         if module is not None:
             modules.append(module)

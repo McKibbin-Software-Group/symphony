@@ -4,7 +4,7 @@ from lark import Discard, Transformer, Token, v_args
 from typing import Any
 import logging
 
-from symphony import SourcePosition, symphony_position
+from symphony import DiagnosticBag, SourcePosition, symphony_position
 from symphony.base_transformer import BaseTransformer
 
 
@@ -19,6 +19,12 @@ class JSONTransformer(BaseTransformer):
     handle various Symphony processing passes.
 
     """
+
+    def __init__(self, file_path: Path) -> None:
+        super().__init__(
+            file_path=file_path,
+            diagnostics=DiagnosticBag(),
+        )
 
     def __default_token__(self, token: Token) -> Any:
         position: SourcePosition = symphony_position(self.file_path, token)

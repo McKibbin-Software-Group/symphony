@@ -28,3 +28,9 @@ equation: "exchange rate conversion of source price to landed destination price"
     This is an example of the syntax used to match up the dimensions from the LHS variable
     to the dimensions of the RHS variables.
     """
+
+#  equation: "Expectation and lead example for wages"
+#      E(LEAD(WAGE)) = WAGE
+#      """
+#      This equation demonstrates the use of EXPECT and LEAD modifiers on a variable reference.
+#      """

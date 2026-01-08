@@ -46,6 +46,7 @@ class Declaration:
     - `documentation`: Optional documentation string associated with the declaration.
 
     """
+
     position: SourcePosition
     label: Optional[str]
     documentation: Optional[str]
@@ -56,6 +57,7 @@ class EquationDeclaration(Declaration):
     """
     Equation declaration.
     """
+
     pass
 
 
@@ -68,6 +70,7 @@ class NamedDeclaration(Declaration):
     - `name`: Required unique name of the declared entity.
 
     """
+
     name: str
 
 
@@ -76,6 +79,7 @@ class MemberDeclaration(NamedDeclaration):
     """
     Member declaration.
     """
+
     pass
 
 
@@ -84,6 +88,7 @@ class UnitDeclaration(NamedDeclaration):
     """
     Unit declaration.
     """
+
     pass
 
 
@@ -100,13 +105,16 @@ class DimensionDeclaration(NamedDeclaration):
         - evaluate `dimension_expression`
         - fill `dimension_members` with the resolved member names.
     """
+
     expression: Optional[DimensionExpression] = None
+
 
 @dataclass(frozen=True)
 class CategoryDeclaration(DimensionDeclaration):
     """
     Category declaration (a specialized dimension).
     """
+
     pass
 
 

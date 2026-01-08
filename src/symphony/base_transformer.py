@@ -88,11 +88,11 @@ class BaseTransformer(Transformer):
 
         The grammar uses a regex token like /\"\"\"(.|\n|\r)*?\"\"\"/.
         """
-        
+
         raw: str = token.value
         if raw.startswith('"""') and raw.endswith('"""') and len(raw) >= 6:
             text: str = raw[3:-3]
-        
+
         # Remove leading and trailing whitespace/newlines
         result: str = text.strip()
 

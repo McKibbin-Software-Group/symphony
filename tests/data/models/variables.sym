@@ -122,3 +122,9 @@ variable EXCH: "nominal exchange rate (USD per local currency unit)"
     logged=True
     """Nominal exchange rate defined as US dollar per local currency unit"""
 
+variable WAGE: "wage rate"
+    domain=(regions)
+    unit=index
+    deviation_unit=percent
+    logged=True
+    """Wage rate by region"""

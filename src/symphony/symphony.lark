@@ -39,7 +39,7 @@ boolean: TRUE | FALSE
 %ignore WS_INLINE
 %ignore NEWLINE
 
-// Line comments (allow both shell-style and C++-style comments)
+// Line comments (allow # style comments)
 %ignore /#[^\n]*/
 
 // Triple-quoted documentation string (non-greedy, spans lines)
@@ -137,7 +137,9 @@ rhs_domain_restriction: "dom" "=" domain_expression
 rhs_dimension_matches: "dim" "=" tuple_position_list
 rhs_aggregation_matches: "agg" "=" tuple_position_list
 
-tuple_position_list: dimension_reference ":" TUPLE_POSITION ("," dimension_reference ":" TUPLE_POSITION)*
+tuple_position_list: tuple_position ("," tuple_position)*
+
+tuple_position: dimension_reference ":" TUPLE_POSITION
 
 // Root of arithmetic expression
 ?expression: sum_expression
@@ -175,7 +177,7 @@ FUNCTION_NAME: "log" | "exp" | "lead" | "lag"
 
 function: FUNCTION_NAME "(" sum_expression ")"
 
-lhs_lead: "lead" "(" lhs_wrapped_variable RIGHT_ROUND_BRACKET ")"
+lhs_lead: "lead" "(" lhs_wrapped_variable ")"
 
 // ---------------------------------------------------------
 // Expectation operator

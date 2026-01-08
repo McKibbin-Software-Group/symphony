@@ -116,7 +116,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         for child in children:
             if isinstance(child, tuple) and child[0] == "list":
                 return child
-            
+
         position = symphony_position(file_path=self.file_path, token_or_meta=meta)
         self.diagnostics.diagnostics.add(
             Diagnostic(
@@ -132,22 +132,34 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             )
         )
         return Discard
-    
+
     # ---------- dimension expression handlers ----------
 
-    def dimension_reference(self, meta: Any, name_token: Token) -> DimensionReferenceTerm:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=name_token)
-        return DimensionReferenceTerm(position=position, referenced_dimension=str(name_token))
+    def dimension_reference(
+        self, meta: Any, name_token: Token
+    ) -> DimensionReferenceTerm:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=name_token
+        )
+        return DimensionReferenceTerm(
+            position=position, referenced_dimension=str(name_token)
+        )
 
     def dimension_term(self, meta: Any, child: Any) -> Any:
         # The grammar typically routes either member_list or dimension_reference here.
         return child
 
-    def dimension_expression(self, meta: Any, first_term: Any, *rest: Any) -> DimensionExpression:
-        position: SourcePosition = symphony_position(file_path=self.file_path, token_or_meta=meta)
+    def dimension_expression(
+        self, meta: Any, first_term: Any, *rest: Any
+    ) -> DimensionExpression:
+        position: SourcePosition = symphony_position(
+            file_path=self.file_path, token_or_meta=meta
+        )
         first: Any = first_term
         if isinstance(first_term, tuple):
-            first = DimensionListTerm(position=position, members=tuple(str(x) for x in first_term))
+            first = DimensionListTerm(
+                position=position, members=tuple(str(x) for x in first_term)
+            )
         rest_pairs: List[Tuple[str, Any]] = []
         # rest arrives as (op, term, op, term, ...)
         i: int = 0
@@ -158,12 +170,16 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             operator: str = str(operator_token)
             term_node: Any
             if isinstance(term_value, tuple):
-                term_node = DimensionListTerm(position=position, members=tuple(str(x) for x in term_value))
+                term_node = DimensionListTerm(
+                    position=position, members=tuple(str(x) for x in term_value)
+                )
             else:
                 term_node = term_value
             rest_pairs.append((operator, term_node))
             i += 2
-        return DimensionExpression(position=position, first=first, rest=tuple(rest_pairs))
+        return DimensionExpression(
+            position=position, first=first, rest=tuple(rest_pairs)
+        )
 
     # ---------- declaration rules ----------
     def get_name(self, token: Token) -> str:
@@ -312,6 +328,7 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
 # ---------- Create the abstract syntax tree for the whole model ---------
 
+
 @dataclass(frozen=True)
 class ASTLoaderResult:
     """
@@ -319,8 +336,10 @@ class ASTLoaderResult:
 
     It supports both the loaded modules and any diagnostics encountered.
     """
+
     modules: Modules
     diagnostics: DiagnosticBag
+
 
 def load_modules(loader_result: LoaderResult) -> ASTLoaderResult:
     """
@@ -353,7 +372,9 @@ def load_modules(loader_result: LoaderResult) -> ASTLoaderResult:
                     severity=DiagnosticSeverity.error,
                     message=f"Failed to parse Symphony file. {err}",
                     primary_label=DiagnosticLabel(
-                        position=SourcePosition(file_path=symphony_file.file_path, line=1, column=1),
+                        position=SourcePosition(
+                            file_path=symphony_file.file_path, line=1, column=1
+                        ),
                         message="Symphony error occurred here.",
                         is_primary=True,
                     ),

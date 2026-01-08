@@ -12,11 +12,13 @@ from symphony import SourcePosition
 # Base node types
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class Node:
     """
     Base type for all abstract syntax tree nodes.
     """
+
     position: SourcePosition
 
 
@@ -29,6 +31,7 @@ class StringWithPosition:
 # =============================================================================
 # Declarations
 # =============================================================================
+
 
 class DeclarationType(str, Enum):
     include = "include"
@@ -80,6 +83,7 @@ class CategoryDeclaration(NamedDeclaration):
 # Dimension and domain expressions (raw, pass 1)
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class DimensionTerm(Node):
     pass
@@ -114,6 +118,7 @@ class DomainList(Node):
     symbol tables. We record the list and whether it came from name_list or
     member_list.
     """
+
     kind: str  # "names" | "members"
     items: Tuple[str, ...] = ()
 
@@ -123,6 +128,7 @@ class TupleCondition(Node):
     """
     A condition over tuple positions, e.g. 1 = 2 or 1 != 2.
     """
+
     left_position: int
     operator: str
     right_position: int
@@ -158,6 +164,7 @@ class DomainDeclaration(NamedDeclaration):
 # Units
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class UnitDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.unit
@@ -166,6 +173,7 @@ class UnitDeclaration(NamedDeclaration):
 # =============================================================================
 # Parameters and variables
 # =============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class UnitSpecification(Node):
@@ -197,6 +205,7 @@ class VariableDeclaration(NamedDeclaration):
 # =============================================================================
 # Equation expression nodes
 # =============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class VariableReference(Node):
@@ -325,6 +334,7 @@ AnyDeclaration = Union[
 # Module containers
 # =============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class Module(Node):
     file_path: Path
@@ -337,12 +347,17 @@ class Modules:
 
     @property
     def declarations(self) -> Tuple[AnyDeclaration, ...]:
-        return tuple(declaration for module in self.modules for declaration in module.declarations)
+        return tuple(
+            declaration
+            for module in self.modules
+            for declaration in module.declarations
+        )
 
 
 # =============================================================================
 # Convenience helpers for later passes (do not mutate frozen nodes)
 # =============================================================================
+
 
 def with_resolved_dimension_members(
     declaration: DimensionDeclaration,
@@ -355,4 +370,6 @@ def with_resolved_domain_tuples(
     declaration: DomainDeclaration,
     resolved_tuples: Sequence[Sequence[str]],
 ) -> DomainDeclaration:
-    return replace(declaration, resolved_tuples=tuple(tuple(items) for items in resolved_tuples))
+    return replace(
+        declaration, resolved_tuples=tuple(tuple(items) for items in resolved_tuples)
+    )

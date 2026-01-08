@@ -49,7 +49,9 @@ variables:
 	pytest -q tests -k "test_variables_abstract_syntax_tree"
 
 equations:
+	pytest -q tests -k "test_equations_json" ; \
 	pytest -q tests -k "test_equations_abstract_syntax_tree" 
+
 
 listtests:
 	py.test tests -q --collect-only	
