@@ -244,21 +244,22 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         )
 
     def domain_expression(
-        self, meta: Any, first_term: DomainTerm, *rest: Any
+        self, meta: Any, children: List[Any]
     ) -> DomainExpression:
         position: SourcePosition = symphony_position(
             file_path=self.file_path, token_or_meta=meta
         )
         rest_pairs: List[Tuple[str, DomainTerm]] = []
-        rest_items: Tuple[Any, ...] = tuple(rest)
-        i: int = 0
-        while i + 1 < len(rest_items):
-            operator: str = str(rest_items[i])
-            term: DomainTerm = rest_items[i + 1]
-            rest_pairs.append((operator, term))
-            i += 2
+        if len(children) > 1:
+            rest_items: Tuple[Any, ...] = tuple(children[1:])
+            i: int = 0
+            while i + 1 < len(rest_items):
+                operator: str = str(rest_items[i])
+                term: DomainTerm = rest_items[i + 1]
+                rest_pairs.append((operator, term))
+                i += 2
         return DomainExpression(
-            position=position, first=first_term, rest=tuple(rest_pairs)
+            position=position, first=children[0], rest=tuple(rest_pairs)
         )
 
     # ---------- declaration rules ----------
@@ -315,7 +316,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
         return MemberDeclaration(
             position=position,
-            declaration_type=DeclarationType.member,
             name=name,
             label=label,
             documentation=documentation,
@@ -379,14 +379,14 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         )
         name: str = self.get_name(children[1])
         label: StringWithPosition = children[2]
-        dimension_expression = children[3]
+        domain_expression = children[3]
         documentation = children[4] if len(children) == 5 else None
-        return DimensionDeclaration(
+        return DomainDeclaration(
             position=position,
             name=name,
             label=label,
             documentation=documentation,
-            expression=dimension_expression,
+            expression=domain_expression,
         )
 
     def unit_declaration(self, meta: Any, children: List[Any]) -> UnitDeclaration:
@@ -404,7 +404,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
         return UnitDeclaration(
             position=position,
-            declaration_type=DeclarationType.unit,
             name=name,
             label=label,
             documentation=documentation,
@@ -421,7 +420,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
         return ParameterDeclaration(
             position=position,
-            declaration_type=DeclarationType.parameter,
             name=name,
             label=label,
             domain_expression=None,
@@ -440,7 +438,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
         return VariableDeclaration(
             position=position,
-            declaration_type=DeclarationType.variable,
             name=name,
             label=label,
             domain_expression=None,
@@ -514,7 +511,6 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
 
         return EquationDeclaration(
             position=position,
-            declaration_type=DeclarationType.equation,
             label=label,
             domain_expression=domain_expression,
             equation_expression=equation_expression,

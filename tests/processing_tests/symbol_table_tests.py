@@ -23,6 +23,8 @@ def test_domains_symbol_table_generation(
 ):
     modules = domains_ast_loader_result.modules
     symbol_table = SymbolTable.build(modules, domains_ast_loader_result.diagnostics)
+    for domain_name, domain in symbol_table.domains.items():
+        logging.info(f"Domain '{domain_name}' has tuples: {domain.tuples}")
 
 def test_variables_symbol_table_generation(
     variables_ast_loader_result: ASTLoaderResult, results_folder: Path

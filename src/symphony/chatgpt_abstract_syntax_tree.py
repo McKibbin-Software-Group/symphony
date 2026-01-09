@@ -157,7 +157,7 @@ class DimensionDeclaration(NamedDeclaration):
 class DomainDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.domain
     expression: Optional[DomainExpression] = None
-    resolved_tuples: Optional[Tuple[Tuple[str, ...], ...]] = None
+    tuples: Optional[Tuple[Tuple[str, ...], ...]] = None
 
 
 # =============================================================================
@@ -368,8 +368,8 @@ def with_resolved_dimension_members(
 
 def with_resolved_domain_tuples(
     declaration: DomainDeclaration,
-    resolved_tuples: Sequence[Sequence[str]],
+    tuples: Sequence[Sequence[str]],
 ) -> DomainDeclaration:
     return replace(
-        declaration, resolved_tuples=tuple(tuple(items) for items in resolved_tuples)
+        declaration, tuples=tuple(tuple(items) for items in tuples)
     )

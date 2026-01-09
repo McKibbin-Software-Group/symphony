@@ -53,11 +53,10 @@ class DeclarationType(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class Declaration(Node):
-    declaration_type: DeclarationType
 
     def __str__(self):
         name: str = self.name if hasattr(self, "name") else "<unnamed>"
-        return f"{name} {self.type} declaration"
+        return f"{name} {self.type.value} declaration"
 
     @property
     def type(self) -> DeclarationType:
@@ -94,7 +93,6 @@ class Declaration(Node):
 
 @dataclass(frozen=True, slots=True)
 class IncludeDeclaration(Declaration):
-    declaration_type: DeclarationType = DeclarationType.include
     included_path: str = ""
 
 
@@ -112,13 +110,11 @@ class NamedDeclaration(Declaration):
 
 @dataclass(frozen=True, slots=True)
 class MemberDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.member
     category: Optional[str] = None
 
 
 @dataclass(frozen=True, slots=True)
 class CategoryDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.category
     members: NameList = ()
 
     @property
@@ -213,7 +209,6 @@ class DomainExpression(Node):
 
 @dataclass(frozen=True, slots=True)
 class DimensionDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.dimension
     expression: Optional[DimensionExpression] = None
     members: Optional[Tuple[str, ...]] = None
 
@@ -223,9 +218,8 @@ class DimensionDeclaration(NamedDeclaration):
 
 @dataclass(frozen=True, slots=True)
 class DomainDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.domain
     expression: Optional[DomainExpression] = None
-    resolved_tuples: Optional[Tuple[Tuple[str, ...], ...]] = None
+    tuples: Optional[Tuple[Tuple[str, ...], ...]] = None
 
 
 # =============================================================================
@@ -235,7 +229,7 @@ class DomainDeclaration(NamedDeclaration):
 
 @dataclass(frozen=True, slots=True)
 class UnitDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.unit
+    pass
 
 
 # =============================================================================
@@ -255,14 +249,12 @@ class DeviationUnitSpecification(Node):
 
 @dataclass(frozen=True, slots=True)
 class ParameterDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.parameter
     domain_expression: Optional[DomainExpression] = None
     unit: Optional[UnitSpecification] = None
 
 
 @dataclass(frozen=True, slots=True)
 class VariableDeclaration(NamedDeclaration):
-    declaration_type: DeclarationType = DeclarationType.variable
     domain_expression: Optional[DomainExpression] = None
     unit: Optional[UnitSpecification] = None
     deviation_unit: Optional[DeviationUnitSpecification] = None
@@ -375,7 +367,6 @@ class EquationExpression(Node):
 
 @dataclass(frozen=True, slots=True)
 class EquationDeclaration(Declaration):
-    declaration_type: DeclarationType = DeclarationType.equation
     label: StringWithPosition = field(
         default_factory=lambda: StringWithPosition(
             value="",
@@ -437,8 +428,8 @@ def with_resolved_dimension_members(
 
 def with_resolved_domain_tuples(
     declaration: DomainDeclaration,
-    resolved_tuples: Sequence[Sequence[str]],
+    tuples: Sequence[Sequence[str]],
 ) -> DomainDeclaration:
     return replace(
-        declaration, resolved_tuples=tuple(tuple(items) for items in resolved_tuples)
+        declaration, tuples=tuple(tuple(items) for items in tuples)
     )

@@ -33,8 +33,6 @@ test:
 
 categories:
 	pytest -q tests -k test_categories_abstract_syntax_tree
-	
-#"test_domains_json"
 
 categories_with_syntax_errors:
 	pytest -q tests -k "test_categories_with_syntax_errors_abstract_syntax_tree"
@@ -43,7 +41,7 @@ dimensions:
 	pytest -q tests -k "test_dimensions_symbol_table_generation"
 	
 domains:
-	pytest -q tests -k "test_domains_abstract_syntax_tree"
+	pytest -q tests -k "test_domains_symbol_table_generation"
 
 variables:
 	pytest -q tests -k "test_variables_abstract_syntax_tree"

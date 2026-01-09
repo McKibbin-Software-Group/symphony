@@ -14,13 +14,10 @@ from symphony.abstract_syntax_tree import (
     DimensionExpression,
     DimensionReference,
     DomainDeclaration,
-    DomainExpression,
-    DomainTerm,
     EquationDeclaration,
     MemberDeclaration,
     Modules,
     ParameterDeclaration,
-    TupleCondition,
     UnitDeclaration,
     VariableDeclaration,
     NameList,
@@ -92,11 +89,8 @@ class SymbolTable:
         variables: Dict[str, VariableDeclaration] = {}
         equations: Dict[str, EquationDeclaration] = {}
 
-        logging.debug(len(modules.declarations))
-
         for declaration in modules.declarations:
 
-            # logging.debug(f"### Symbol tabling {declaration.type.value} {declaration.name}")
             if SymbolTable.name_is_unique(declaration, names, diagnostics):
 
                 match declaration.__class__.__name__:
@@ -132,9 +126,6 @@ class SymbolTable:
                             )
                         )
                 names[declaration.name] = declaration
-        
-        # logging.debug(len(domains))
-        # exit("Sorting out symbol table")
 
         symbol_table: SymbolTable = SymbolTable(
             names=names,
@@ -152,8 +143,6 @@ class SymbolTable:
         symbol_table.setup_members()
 
         symbol_table.setup_dimensions()
-
-        symbol_table.setup_domains()
 
         return symbol_table
     
@@ -174,15 +163,6 @@ class SymbolTable:
         """
         dimension_processor = DimensionProcessor(self)
         dimension_processor.process()
-
-    def setup_domains(self) -> None:
-        """
-        ### Overview
-
-        Setup domains in the symbol table.
-        """
-        domain_processor = DomainProcessor(self)
-        domain_processor.process()
 
 
 MemberName = str
@@ -604,6 +584,8 @@ class DimensionProcessor:
         return result
 
 
+
+
 DomainName = str
 
 
@@ -699,13 +681,12 @@ class DomainProcessor:
         Yield any names that are interpreted as domain references: singleton term lists
         whose single item matches a declared domain name.
         """
-        for domain_term in self._iterate_domain_terms(expression):
-            name_list: NameList = domain_term.domain_list[0]
-            items: Tuple[str, ...] = name_list.items
+        for term in self._iter_terms(expression):
+            items: Tuple[str, ...] = term.domain_list.items
             if len(items) == 1 and items[0] in self.symbol_table.domains:
                 yield items[0]
 
-    def _iterate_domain_terms(self, expression: DomainExpression) -> Iterable[DomainTerm]:
+    def _iter_terms(self, expression: DomainExpression) -> Iterable[DomainTerm]:
         yield expression.first
         for _, term in expression.rest:
             yield term
@@ -807,11 +788,10 @@ class DomainProcessor:
     def _evaluate_domain_term(
         self, *, domain_declaration_name: str, term: DomainTerm
     ) -> Optional[List[Tuple[str, ...]]]:
-        name_list: NameList = term.domain_list[0]
         base: Optional[List[Tuple[str, ...]]] = self._expand_domain_list(
             domain_declaration_name=domain_declaration_name,
             position=term.position,
-            items=name_list.items,
+            items=term.domain_list.items,
         )
         if base is None:
             return None
