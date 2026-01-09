@@ -55,6 +55,42 @@ class DeclarationType(str, Enum):
 class Declaration(Node):
     declaration_type: DeclarationType
 
+    def __str__(self):
+        name: str = self.name if hasattr(self, "name") else "<unnamed>"
+        return f"{name} {self.type} declaration"
+
+    @property
+    def type(self) -> DeclarationType:
+        """
+        ### Overview
+        
+        Get the declaration type enum value for this declaration.
+        
+        ### Returns
+        
+        The corresponding `DeclarationType` enum value.
+        """
+        match self.__class__.__name__:
+            case "IncludeDeclaration":
+                return DeclarationType.include
+            case "MemberDeclaration":
+                return DeclarationType.member
+            case "CategoryDeclaration":
+                return DeclarationType.category
+            case "DimensionDeclaration":
+                return DeclarationType.dimension
+            case "DomainDeclaration":
+                return DeclarationType.domain
+            case "ParameterDeclaration":
+                return DeclarationType.parameter
+            case "VariableDeclaration":
+                return DeclarationType.variable
+            case "UnitDeclaration":
+                return DeclarationType.unit
+            case "EquationDeclaration":
+                return DeclarationType.equation
+            case _:
+                raise ValueError(f"Unknown declaration type: {self.__class__.__name__}")
 
 @dataclass(frozen=True, slots=True)
 class IncludeDeclaration(Declaration):
@@ -77,12 +113,17 @@ class NamedDeclaration(Declaration):
 @dataclass(frozen=True, slots=True)
 class MemberDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.member
+    category: Optional[str] = None
 
 
 @dataclass(frozen=True, slots=True)
 class CategoryDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.category
     members: NameList = ()
+
+    @property
+    def category(self) -> str:
+        return self.name
 
 
 # =============================================================================
@@ -117,9 +158,7 @@ class DeviationUnitReference(Node):
 
 @dataclass(frozen=True, slots=True)
 class DimensionExpression(Node):
-    first: DimensionTerm
-    rest: Tuple[Tuple[str, DimensionTerm], ...] = ()
-
+    elements: Tuple[Any, ...] = ()
 
 @dataclass(frozen=True, slots=True)
 class NameList(Node):
@@ -176,8 +215,11 @@ class DomainExpression(Node):
 class DimensionDeclaration(NamedDeclaration):
     declaration_type: DeclarationType = DeclarationType.dimension
     expression: Optional[DimensionExpression] = None
-    resolved_members: Optional[Tuple[str, ...]] = None
+    members: Optional[Tuple[str, ...]] = None
 
+    @property
+    def category(self) -> str:
+        return self.members[0].category if self.members else None
 
 @dataclass(frozen=True, slots=True)
 class DomainDeclaration(NamedDeclaration):
@@ -251,7 +293,8 @@ class LhsVariableReference(Node):
 
 @dataclass(frozen=True, slots=True)
 class Expression(Node):
-    pass    
+    pass
+
 
 @dataclass(frozen=True, slots=True)
 class NumberLiteral(Expression):
@@ -387,9 +430,9 @@ class Modules:
 
 def with_resolved_dimension_members(
     declaration: DimensionDeclaration,
-    resolved_members: Sequence[str],
+    members: Sequence[str],
 ) -> DimensionDeclaration:
-    return replace(declaration, resolved_members=tuple(resolved_members))
+    return replace(declaration, members=tuple(members))
 
 
 def with_resolved_domain_tuples(

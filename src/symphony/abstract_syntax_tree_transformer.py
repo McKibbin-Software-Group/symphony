@@ -183,35 +183,21 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         return child
 
     def dimension_expression(
-        self, meta: Any, first_term: Any, *rest: Any
+        self, meta: Any, children: List[Any]
     ) -> DimensionExpression:
+        """
+        ### Overview
+        Dimension expression handler.
+        
+        The children are a list of either member lists (NameList) or dimension references (DimensionReference),
+        combined using '+' and '-' operators (Tokens).
+        
+        """
         position: SourcePosition = symphony_position(
             file_path=self.file_path, token_or_meta=meta
         )
-        first: Any = first_term
-        if isinstance(first_term, tuple):
-            first = DimensionListTerm(
-                position=position, members=tuple(str(x) for x in first_term)
-            )
-        rest_pairs: List[Tuple[str, Any]] = []
-        # rest arrives as (op, term, op, term, ...)
-        i: int = 0
-        rest_items: Tuple[Any, ...] = tuple(rest)
-        while i + 1 < len(rest_items):
-            operator_token: Any = rest_items[i]
-            term_value: Any = rest_items[i + 1]
-            operator: str = str(operator_token)
-            term_node: Any
-            if isinstance(term_value, tuple):
-                term_node = DimensionListTerm(
-                    position=position, members=tuple(str(x) for x in term_value)
-                )
-            else:
-                term_node = term_value
-            rest_pairs.append((operator, term_node))
-            i += 2
         return DimensionExpression(
-            position=position, first=first, rest=tuple(rest_pairs)
+            position=position, elements=tuple(children)
         )
 
     # ---------- domain expression handlers ----------
@@ -234,7 +220,9 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
             right_position=int(str(children[2])),
         )
 
-    def tuple_conditions(self, meta: Any, *children: Any) -> Tuple[TupleCondition, ...]:
+    def tuple_conditions(
+        self, meta: Any, children: List[Any]
+    ) -> Tuple[TupleCondition, ...]:
         conditions: List[TupleCondition] = [
             c for c in children if isinstance(c, TupleCondition)
         ]
@@ -346,7 +334,8 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         )
         name: str = self.get_name(children[1])
         label: StringWithPosition = children[2]
-        members: NameList = children[3]
+        members_name_list: NameList = children[3]
+        members: Tuple[str, ...] = members_name_list.items
         documentation: StringWithPosition = children[4] if len(children) == 5 else None
         return CategoryDeclaration(
             position=position,
@@ -670,14 +659,16 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         return lhs_variable_reference
 
     def lhs_wrapped_variable_reference(
-        self, meta: Any, children: List[Any],
+        self,
+        meta: Any,
+        children: List[Any],
     ) -> LhsVariableReference:
         """
         ### Overview
 
-        TODO: Check if this can ever be reached when parsing 
+        TODO: Check if this can ever be reached when parsing
         files that conform to the Lark grammar.
-        
+
         LHS wrapped variable reference handler.
         """
         position: SourcePosition = symphony_position(
@@ -866,23 +857,26 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     # Root rules
     # ---------------------------------------------------------------------
 
-    def declaration(self, meta: Any, child: Any) -> AnyDeclaration:
-        return child
-
-    def start(self, meta: Any, *children: Any) -> Tuple[AnyDeclaration, ...]:
-        declarations: List[AnyDeclaration] = [c for c in children if c is not None]
-        return tuple(declarations)
+    # def declaration(self, meta: Any, child: Any) -> AnyDeclaration:
+    #     exit("debug declaration")
+    #     return child
 
     # ---------- top-level rule ----------
 
+    # def start(self, meta: Any, *children: Any) -> Tuple[AnyDeclaration, ...]:
+    #     declarations: List[AnyDeclaration] = [child for child in children if child is not None]
+    #     return tuple(declarations)
+
     def start(self, meta: Any, children: List[AnyDeclaration]) -> Module:
         """
+        ### Overview
+
         Top-level grammar rule: wrap all declarations into a Program.
         No semantic checks here.
         """
         return Module(
             position=SourcePosition(file_path=self.file_path, line=1, column=1),
-            declarations=children,
+            declarations=tuple(children),
         )
 
 

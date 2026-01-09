@@ -1,5 +1,8 @@
 include "categories.sym"
 
+dimension green_blue: "Green and Blue by adding green and blue members" 
+    [green] + [blue]
+
 dimension not_USA: "All regions except the USA"
     regions - [USA]
     """
@@ -12,7 +15,7 @@ dimension red_green: "Red and Green by subtracting Blue from All Colours"
 dimension red_blue: "Red and Blue by subtracting Green from All Colours" 
     colours - [green]
 
-dimension red: "Red by subtracting Blue from red_blue" 
+dimension red_alone: "Red by subtracting Blue from red_blue" 
     red_blue - [blue]
 
 dimension blue_only: "Blue only" 

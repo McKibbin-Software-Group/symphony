@@ -90,14 +90,14 @@ logged: LOGGED "=" boolean
 
 intertemporal: INTERTEMPORAL "=" boolean
 
-set_operator: PLUS | MINUS
+?set_operator: PLUS | MINUS
 
 // Dimension member expressions
 dimension_expression: dimension_term (set_operator dimension_term)*
 
 // A dimension_term is either a bracketed list of member names or 
 // a reference to a previously-declared dimension or category using its NAME.
-dimension_term: member_list
+?dimension_term: member_list
         | dimension_reference
 
 dimension_reference: NAME
