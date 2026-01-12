@@ -4,6 +4,8 @@ from dataclasses import dataclass, replace
 import logging
 import itertools
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+
+import numpy as np
 from symphony import Diagnostic, DiagnosticBag, DiagnosticLabel, DiagnosticSeverity, SourcePosition, errors
 from symphony.abstract_syntax_tree import (
     AnyDeclaration,
@@ -802,7 +804,7 @@ class DomainProcessor:
             )
             if right is None:
                 return None
-            logging.debug(f"Domain '{domain_declaration.name}' has a domain expression operator '{operator}'")
+
             if operator == "+":
                 current = self._unique_preserve_order(current + right)
             elif operator == "-":
@@ -815,6 +817,54 @@ class DomainProcessor:
                     help_text="Only '+' (union) and '-' (difference) are supported in domain expressions.",
                 )
                 return None
+
+        # Ensure all members with the same position, across all tuples, belong to the same category.
+        if current:
+            arity: int = len(current[0])
+            for position_index in range(arity):
+                category_name: Optional[str] = None
+                for tuple_value in current:
+                    member_name: str = tuple_value[position_index]
+                    if member_name not in self.symbol_table.members:
+                        self._add_error(
+                            position=domain_declaration.position,
+                            message=f"Member '{member_name}' used in domain '{domain_declaration.name}' is not declared.",
+                            help_text="Declare the member or confirm your model allows implicit member names.",
+                        )
+                        continue
+                    member_declaration: MemberDeclaration = self.symbol_table.members[member_name]
+                    if category_name is None:
+                        category_name = member_declaration.category
+                    else:
+                        if member_declaration.category != category_name:
+                            self._add_error(
+                                position=domain_declaration.position,
+                                message=f"Member '{member_name}' in position {position_index + 1} of domain '{domain_declaration.name}' does not belong to category '{category_name}'.",
+                                help_text="Ensure all members in the same position across tuples belong to the same category.",
+                            )
+
+        # Sort the tuples to match the order of members in their categories, position by position.
+        # Do so by calculating a score for each tuple based on tuple positions and values
+        # and sorting using this score.
+        if current:
+            arity: int = len(current[0])
+            sorting_scores: list[int] = np.zeros(len(current), dtype=int).tolist()
+            position_weights = [10 ** (arity - i - 1) for i in range(arity)]
+            for position_index in range(arity):
+                category_name: Optional[str] = None
+                tuple_index: int = 0
+                for tuple_value in current:
+                    member_name: str = tuple_value[position_index]
+                    if member_name in self.symbol_table.members:
+                        member_declaration: MemberDeclaration = self.symbol_table.members[member_name]
+                        category_name = member_declaration.category
+                        category_declaration: CategoryDeclaration = self.symbol_table.categories[category_name]
+                        member_position: int = category_declaration.members.index(member_name)
+                        sorting_scores[tuple_index] += member_position * position_weights[position_index]
+                    tuple_index += 1
+            # Sort the current tuples by the computed scores.
+            sorted_indices: List[int] = sorted(range(len(current)), key=lambda i: sorting_scores[i])
+            current = [current[i] for i in sorted_indices]
 
         return tuple(current)
 
@@ -1035,6 +1085,12 @@ class DomainProcessor:
     # ---------------------------------------------------------------------
 
     def _unique_preserve_order(self, items: Sequence[Tuple[str, ...]]) -> List[Tuple[str, ...]]:
+        """
+        ### Overview
+        
+        Generates a list of unique tuples, preserving their original order.
+        
+        """
         seen: Set[Tuple[str, ...]] = set()
         result: List[Tuple[str, ...]] = []
         for item in items:

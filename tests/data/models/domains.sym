@@ -16,12 +16,14 @@ domain bilateral_trade: "Bilateral trade flows"
     (origins, destinations | 1 != 2) 
 """Bilateral trade flows"""
 
-domain origins_to_destinations: "trade flows"
+domain matched_origins_to_destinations: "trade flows"
     (origins,destinations|1=2)
 
 domain bilateral_trade_by_sector: "Bilateral trade flows by sector" 
     (sectors, origins, destinations | 2 != 3) 
 """Bilateral trade flows by sector"""
+
+
 
 domain sectors_by_region: "Each sector for each region" 
     (sectors, regions)
