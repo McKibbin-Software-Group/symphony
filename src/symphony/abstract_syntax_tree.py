@@ -185,6 +185,9 @@ class TupleCondition(Node):
     right_position: int
 
 
+TupleConditions = Tuple[TupleCondition, ...]
+
+
 @dataclass(frozen=True, slots=True)
 class TuplePosition(Node):
     """
@@ -198,7 +201,7 @@ class TuplePosition(Node):
 @dataclass(frozen=True, slots=True)
 class DomainTerm(Node):
     domain_list: NameList
-    tuple_conditions: Tuple[TupleCondition, ...] = ()
+    tuple_conditions: TupleConditions = ()
 
 
 @dataclass(frozen=True, slots=True)

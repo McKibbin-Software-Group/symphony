@@ -25,7 +25,6 @@ from symphony.abstract_syntax_tree import (
     VariableDeclaration,
     NameList,
 )
-
 @dataclass(frozen=True)
 class SymbolTable:
     """
@@ -133,9 +132,6 @@ class SymbolTable:
                         )
                 names[declaration.name] = declaration
         
-        # logging.debug(len(domains))
-        # exit("Sorting out symbol table")
-
         symbol_table: SymbolTable = SymbolTable(
             names=names,
             members=members,
@@ -155,6 +151,13 @@ class SymbolTable:
 
         symbol_table.setup_domains()
 
+        if symbol_table.diagnostics.has_errors():
+            symbol_table.diagnostics.report_diagnostics()
+            return None
+        
+        elif symbol_table.diagnostics.has_warnings():
+            symbol_table.diagnostics.report_diagnostics()
+        
         return symbol_table
     
     def setup_members(self) -> None:
@@ -650,11 +653,9 @@ class DomainProcessor:
         """
 
         dependency_graph: Dict[DomainName, Set[DomainName]] = self._build_dependency_graph()
-        ordered: Optional[List[DomainName]] = self._topological_sort_domains(dependency_graph)
-        if ordered is None:
-            return
+        ordered_domains: Optional[List[DomainName]] = self._topological_sort_domains(dependency_graph)
 
-        for domain_name in ordered:
+        for domain_name in ordered_domains:
             domain_declaration: DomainDeclaration = self.symbol_table.domains[domain_name]
             resolved: Optional[Tuple[Tuple[str, ...], ...]] = self._evaluate_domain_declaration(domain_declaration)
             if resolved is None:
@@ -681,6 +682,7 @@ class DomainProcessor:
                 continue
 
             for referenced_domain in self._domain_references_in_expression(expression):
+                logging.debug(f"Domain '{domain_name}' references domain '{referenced_domain}'")
                 if referenced_domain == domain_name:
                     self._add_error(
                         position=expression.position,
@@ -700,7 +702,7 @@ class DomainProcessor:
         whose single item matches a declared domain name.
         """
         for domain_term in self._iterate_domain_terms(expression):
-            name_list: NameList = domain_term.domain_list[0]
+            name_list: NameList = domain_term.domain_list
             items: Tuple[str, ...] = name_list.items
             if len(items) == 1 and items[0] in self.symbol_table.domains:
                 yield items[0]
@@ -749,7 +751,7 @@ class DomainProcessor:
                 message=f"Cycle detected among domains: {', '.join(cyclic_nodes)}",
                 help_text="Rewrite the expressions so domains do not (directly or indirectly) reference each other in a cycle.",
             )
-            return None
+            return []
 
         return ordered
 
@@ -769,26 +771,38 @@ class DomainProcessor:
     def _evaluate_domain_declaration(
         self, domain_declaration: DomainDeclaration
     ) -> Optional[Tuple[Tuple[str, ...], ...]]:
-        expression: Optional[DomainExpression] = domain_declaration.expression
-        if expression is None:
+        """
+        ### Overview
+        
+        Evaluate a domain declaration's expression into concrete tuples of member names.
+        
+        Returns None on error.
+        """
+
+        domain_expression: Optional[DomainExpression] = domain_declaration.expression
+        
+        # Return the empty set for domains with no expression. That is a unique
+        # domain itself.
+        if domain_expression is None:
             return tuple()
 
+        # Process the terms in the domain expression from left to right.
         current: Optional[List[Tuple[str, ...]]] = self._evaluate_domain_term(
             domain_declaration_name=domain_declaration.name,
-            term=expression.first,
+            term=domain_expression.first,
         )
         if current is None:
             return None
         current = self._unique_preserve_order(current)
 
-        for operator, term in expression.rest:
+        for operator, term in domain_expression.rest:
             right: Optional[List[Tuple[str, ...]]] = self._evaluate_domain_term(
                 domain_declaration_name=domain_declaration.name,
                 term=term,
             )
             if right is None:
                 return None
-
+            logging.debug(f"Domain '{domain_declaration.name}' has a domain expression operator '{operator}'")
             if operator == "+":
                 current = self._unique_preserve_order(current + right)
             elif operator == "-":
@@ -807,7 +821,14 @@ class DomainProcessor:
     def _evaluate_domain_term(
         self, *, domain_declaration_name: str, term: DomainTerm
     ) -> Optional[List[Tuple[str, ...]]]:
-        name_list: NameList = term.domain_list[0]
+        """
+        ### Overview
+        
+        Evaluate a single domain term into concrete tuples of member names.
+
+        Returns None on error.
+        """
+        name_list: NameList = term.domain_list
         base: Optional[List[Tuple[str, ...]]] = self._expand_domain_list(
             domain_declaration_name=domain_declaration_name,
             position=term.position,
@@ -816,8 +837,12 @@ class DomainProcessor:
         if base is None:
             return None
 
+        logging.debug(f"Expanded domain term in domain '{domain_declaration_name}': {term.tuple_conditions}")
+
+        # Now apply any tuple conditions to filter the base tuples.
         if term.tuple_conditions:
-            arity: int = len(base[0]) if base else 0
+            logging.info(f"Applying tuple conditions in domain '{domain_declaration_name}': {term.tuple_conditions}")
+            arity: int = len(base[0]) if base else 0 # The number of positions in each tuple.
             filtered: List[Tuple[str, ...]] = []
             for tuple_value in base:
                 if self._tuple_satisfies_conditions(
@@ -829,7 +854,7 @@ class DomainProcessor:
                 ):
                     filtered.append(tuple_value)
             base = filtered
-
+        # exit("testing tuple conditions usage")
         return base
 
     def _expand_domain_list(
@@ -839,6 +864,13 @@ class DomainProcessor:
         position: SourcePosition,
         items: Tuple[str, ...],
     ) -> Optional[List[Tuple[str, ...]]]:
+        """
+        ### Overview
+        
+        Expand a NameList in a domain term into concrete tuples of member names.
+        
+        Returns None on error.
+        """
         if len(items) == 0:
             self._add_error(
                 position=position,
@@ -847,25 +879,28 @@ class DomainProcessor:
             )
             return None
 
-        # Singleton: prefer domain reference, then dimension/category, then member.
+        # Singleton: try domain reference, then dimension/category, then member.
         if len(items) == 1:
             name: str = items[0]
 
+            # Handle singleton domain reference.
             if name in self.symbol_table.domains:
-                referenced: DomainDeclaration = self.symbol_table.domains[name]
-                if referenced.tuples is None:
+                referenced_domain: DomainDeclaration = self.symbol_table.domains[name]
+                if referenced_domain.tuples is None:
                     self._add_error(
                         position=position,
                         message=f"Domain '{domain_declaration_name}' references domain '{name}' which could not be resolved.",
                         help_text="Fix errors in the referenced domain, or break dependency cycles.",
                     )
                     return None
-                return [tuple(t) for t in referenced.tuples]
+                return [tuple(t) for t in referenced_domain.tuples]
 
+            # Handle singleton dimension/category reference.
             dimension_members: Optional[Tuple[str, ...]] = self._members_for_dimension_or_category(name)
             if dimension_members is not None:
                 return [(member_name,) for member_name in dimension_members]
 
+            # Handle singleton member reference.
             if name in self.symbol_table.members:
                 return [(name,)]
 
@@ -885,7 +920,7 @@ class DomainProcessor:
             if name in self.symbol_table.members:
                 member_name_list.append(name)
                 continue
-            if self._members_for_dimension_or_category(name) is not None:
+            if name in self.symbol_table.dimensions:
                 dimension_name_list.append(name)
                 continue
             if name in self.symbol_table.domains:
@@ -898,10 +933,11 @@ class DomainProcessor:
             unknown_names.append(name)
 
         if unknown_names:
+            logging.debug(f"Unknown names in domain '{domain_declaration_name}': {unknown_names}")
             self._add_error(
                 position=position,
                 message=f"Unknown reference(s) in domain '{domain_declaration_name}': {', '.join(unknown_names)}.",
-                help_text="Declare the missing names or correct their spelling.",
+                help_text="Add the necessary declarations or correct their spelling.",
             )
             return None
 
@@ -935,9 +971,6 @@ class DomainProcessor:
         if name in self.symbol_table.dimensions:
             dimension_declaration: DimensionDeclaration = self.symbol_table.dimensions[name]
             return dimension_declaration.members or tuple()
-        if name in self.symbol_table.categories:
-            category_declaration: CategoryDeclaration = self.symbol_table.categories[name]
-            return category_declaration.members.items
         return None
 
     def _tuple_satisfies_conditions(
@@ -949,6 +982,22 @@ class DomainProcessor:
         position: SourcePosition,
         domain_declaration_name: str,
     ) -> bool:
+        """
+        ### Overview
+
+        Check whether a tuple satisfies all given conditions.
+       
+        ### Arguments
+
+        - `tuple_value`: The tuple to check.
+        - `conditions`: The conditions to check against.
+        - `arity`: The number of positions in the tuple.
+        - `position`: The source position for diagnostics.
+        - `domain_declaration_name`: The name of the domain for diagnostics.
+
+        Returns True if all conditions are satisfied, False otherwise.
+        
+        """
         for condition in conditions:
             left_index: int = condition.left_position - 1
             right_index: int = condition.right_position - 1

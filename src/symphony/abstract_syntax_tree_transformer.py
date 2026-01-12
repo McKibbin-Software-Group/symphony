@@ -55,6 +55,7 @@ from symphony.abstract_syntax_tree import (
     DocumentationWithPosition,
     Summation,
     TupleCondition,
+    TupleConditions,
     TuplePosition,
     UnaryMinus,
     UnitDeclaration,
@@ -213,16 +214,17 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
         position: SourcePosition = symphony_position(
             file_path=self.file_path, token_or_meta=meta
         )
-        return TupleCondition(
+        result: TupleCondition = TupleCondition(
             position=position,
             left_position=int(str(children[0])),
             operator=str(children[1]),
             right_position=int(str(children[2])),
         )
+        return result
 
     def tuple_conditions(
         self, meta: Any, children: List[Any]
-    ) -> Tuple[TupleCondition, ...]:
+    ) -> TupleConditions:
         conditions: List[TupleCondition] = [
             c for c in children if isinstance(c, TupleCondition)
         ]
@@ -231,15 +233,38 @@ class AbstractSyntaxTreeTransformer(BaseTransformer):
     def domain_term(
         self,
         meta: Any,
-        domain_list: NameList,
-        tuple_conditions: Optional[Tuple[TupleCondition, ...]] = None,
+        children: List[Any],
+        # domain_list: NameList,
+        # tuple_conditions: Optional[Tuple[TupleCondition, ...]] = None,
     ) -> DomainTerm:
         position: SourcePosition = symphony_position(
             file_path=self.file_path, token_or_meta=meta
         )
+        logging.debug(f"Creating domain term at {position} with children: {children}")
+        name_list: NameList = None
+        tuple_conditions: Optional[TupleConditions] = None
+        for child in children:
+            if isinstance(child, NameList) and name_list is None:
+                name_list = child
+            elif isinstance(child, tuple) and tuple_conditions is None:
+                tuple_conditions: TupleConditions = child
+            else:
+                self.diagnostics.add(
+                    Diagnostic(
+                        code=errors.syntax_error,
+                        severity=DiagnosticSeverity.error,
+                        message=f"Unexpected content in domain declaration at {position}.",
+                        primary_label=DiagnosticLabel(
+                            position=position,
+                            message="The error occurred near here.",
+                            is_primary=True,
+                        ),
+                        help_text="Ensure that the domain declaration is correctly formed.",
+                    )
+                )
         return DomainTerm(
             position=position,
-            domain_list=domain_list,
+            domain_list=name_list,
             tuple_conditions=tuple_conditions or (),
         )
 

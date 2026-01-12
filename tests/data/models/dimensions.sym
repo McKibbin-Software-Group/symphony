@@ -1,5 +1,11 @@
 include "categories.sym"
 
+dimension destinations: "All destination regions"
+    regions
+
+dimension origins: "All origin regions"
+    regions
+
 dimension green_blue: "Green and Blue by adding green and blue members" 
     [green] + [blue]
 

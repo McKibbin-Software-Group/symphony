@@ -5,9 +5,7 @@ from enum import Enum
 import logging
 from pathlib import Path
 from typing import Any, List
-
-import json
-from lark import Lark, Tree, Token
+from lark import Tree, Token
 from lark import UnexpectedInput
 
 

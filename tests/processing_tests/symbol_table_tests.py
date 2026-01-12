@@ -15,6 +15,7 @@ def test_dimensions_symbol_table_generation(
 ):
     modules = dimensions_ast_loader_result.modules
     symbol_table = SymbolTable.build(modules, dimensions_ast_loader_result.diagnostics)
+    symbol_table.diagnostics.report_diagnostics()
     for dimension_name, dimension in symbol_table.dimensions.items():
         logging.info(f"Dimension '{dimension_name}' has members: {dimension.members}")
     
@@ -23,6 +24,11 @@ def test_domains_symbol_table_generation(
 ):
     modules = domains_ast_loader_result.modules
     symbol_table = SymbolTable.build(modules, domains_ast_loader_result.diagnostics)
+    if symbol_table is None:
+        logging.error("Symbol table generation failed due to previous errors.")
+        return
+    for dimension_name, dimension in symbol_table.dimensions.items():
+        logging.info(f"Dimension '{dimension_name}' has members: {dimension.members}")
     for domain_name, domain in symbol_table.domains.items():
         logging.info(f"Domain '{domain_name}' has tuples: {domain.tuples}")
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from typing import Any, Dict, List, Iterable, Optional, Sequence
 from enum import Enum
 from pathlib import Path
@@ -82,7 +83,30 @@ class Diagnostic:
 
     def is_error(self) -> bool:
         return self.severity == DiagnosticSeverity.error
+    
+    def is_warning(self) -> bool:
+        return self.severity == DiagnosticSeverity.warning
 
+    def __str__(self):            
+        """
+        ### Overview
+
+        Format a Diagnostic object into a human-readable string.
+
+        ### Returns
+
+        Formatted string representation of the diagnostic.
+        """
+        lines: list[str] = []
+        lines.append(
+            f"{self.primary_label.position}: {self.severity.value} {self.code}: {self.message}"
+        )
+        lines.append(f"  -> {self.primary_label.message}")
+        for label in self.secondary_labels:
+            lines.append(f"  = {label.position}: {label.message}")
+        if self.help_text is not None:
+            lines.append(f"  help: {self.help_text}")
+        return "\n".join(lines)
 
 @dataclass
 class DiagnosticBag:
@@ -96,10 +120,40 @@ class DiagnosticBag:
 
     def has_errors(self) -> bool:
         return any(diagnostic.is_error() for diagnostic in self.diagnostics)
+    
+    def has_warnings(self) -> bool:
+        return any(diagnostic.severity == DiagnosticSeverity.warning for diagnostic in self.diagnostics)
 
     def raise_if_errors(self) -> None:
         if self.has_errors():
             raise SymphonyDiagnosticsException(self.diagnostics)
+
+
+    def report_diagnostics(self) -> None:
+        """
+        ### Overview
+
+        Report diagnostics to the console in a sorted order.
+
+        """
+
+        sorted_diagnostics = sorted(
+            self.diagnostics,
+            key=lambda diagnostic: (
+                diagnostic.severity.value,
+                str(diagnostic.primary_label.position.file_path),
+                diagnostic.primary_label.position.line,
+                diagnostic.primary_label.position.column,
+                diagnostic.code,
+            ),
+        )
+        for diagnostic in sorted_diagnostics:
+            if diagnostic.severity == DiagnosticSeverity.error:
+                logging.error(diagnostic)
+            elif diagnostic.severity == DiagnosticSeverity.warning:
+                logging.warning(diagnostic)
+            else:
+                logging.info(diagnostic)
 
 
 class SymphonyException(Exception):

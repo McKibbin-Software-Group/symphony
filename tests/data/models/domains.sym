@@ -8,12 +8,16 @@ domain product_of_colours_and_regions: "All colours for all regions"
     (colours, regions) 
 """All colours for all regions"""
 
+domain region_pairs: "Bilateral trade flows" 
+    (origins, destinations) 
+"""All pairs of origin and destination regions"""
+
 domain bilateral_trade: "Bilateral trade flows" 
     (origins, destinations | 1 != 2) 
 """Bilateral trade flows"""
 
 domain origins_to_destinations: "trade flows"
-    (origins,destinations - origins,destinations|1=2)
+    (origins,destinations|1=2)
 
 domain bilateral_trade_by_sector: "Bilateral trade flows by sector" 
     (sectors, origins, destinations | 2 != 3) 
